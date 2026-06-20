@@ -27,6 +27,8 @@ const CATEGORY_CONTEXT: Record<string, string> = {
     "door and window issues including locks, hinges, handles, seals, draughts, and broken panes in a rented student property",
   Garden:
     "garden and outdoor issues including overgrown areas, blocked gutters, and outdoor lighting in a rented student property",
+  "Lost Key":
+    "lost or broken keys for a rented student property, including what steps to take immediately, who to contact, and what to expect regarding replacement costs",
   Other: "general maintenance issues in a rented student property",
 };
 

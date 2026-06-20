@@ -4,14 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const CATEGORIES = [
-  "Heating",
-  "Plumbing",
-  "Electrical",
-  "Kitchen Appliances",
-  "Bathroom",
-  "Doors & Windows",
-  "Garden",
-  "Other",
+  { name: "Heating", icon: "🌡️" },
+  { name: "Plumbing", icon: "🚿" },
+  { name: "Electrical", icon: "⚡" },
+  { name: "Kitchen Appliances", icon: "🍽️" },
+  { name: "Bathroom", icon: "🛁" },
+  { name: "Doors & Windows", icon: "🚪" },
+  { name: "Garden", icon: "🌿" },
+  { name: "Lost Key", icon: "🔑" },
+  { name: "Other", icon: "🔧" },
 ];
 
 export default function Home() {
@@ -28,9 +29,7 @@ export default function Home() {
   });
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -63,115 +62,139 @@ export default function Home() {
     form.description;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b px-6 py-4">
-        <h1 className="text-xl font-bold text-gray-900">
-          Report a Maintenance Issue
-        </h1>
-        <p className="text-sm text-gray-500">
-          Submit your request and we'll help you troubleshoot first
-        </p>
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-[#0f2044] px-6 py-8">
+        <div className="max-w-xl mx-auto">
+          <h1 className="text-2xl font-bold text-white">
+            Student Maintenance Hub
+          </h1>
+          <p className="text-blue-200 text-sm mt-1">
+            Report an issue at your property — we'll help you troubleshoot
+            before arranging a visit
+          </p>
+        </div>
       </header>
 
       <div className="max-w-xl mx-auto p-6">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Your name *
-            </label>
-            <input
-              name="tenant_name"
-              value={form.tenant_name}
-              onChange={handleChange}
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">
+            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+              Your Details
+            </h2>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Full name *
+              </label>
+              <input
+                name="tenant_name"
+                value={form.tenant_name}
+                onChange={handleChange}
+                required
+                placeholder="e.g. Jamie Smith"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Email *
+                </label>
+                <input
+                  name="tenant_email"
+                  type="email"
+                  value={form.tenant_email}
+                  onChange={handleChange}
+                  required
+                  placeholder="you@email.com"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Phone (optional)
+                </label>
+                <input
+                  name="tenant_phone"
+                  type="tel"
+                  value={form.tenant_phone}
+                  onChange={handleChange}
+                  placeholder="07700 000000"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Property address *
+              </label>
+              <input
+                name="property_address"
+                value={form.property_address}
+                onChange={handleChange}
+                required
+                placeholder="e.g. 12 Example Street, Room 3"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email address *
-            </label>
-            <input
-              name="tenant_email"
-              type="email"
-              value={form.tenant_email}
-              onChange={handleChange}
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Phone number (optional)
-            </label>
-            <input
-              name="tenant_phone"
-              type="tel"
-              value={form.tenant_phone}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Property address *
-            </label>
-            <input
-              name="property_address"
-              value={form.property_address}
-              onChange={handleChange}
-              required
-              placeholder="e.g. 12 Example Street, Room 3"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Issue category *
-            </label>
-            <select
-              name="category"
-              value={form.category}
-              onChange={handleChange}
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">Select a category</option>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
+          <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">
+            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+              Issue Type
+            </h2>
+            <div className="grid grid-cols-4 gap-2">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.name}
+                  type="button"
+                  onClick={() => setForm({ ...form, category: cat.name })}
+                  className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all ${
+                    form.category === cat.name
+                      ? "bg-[#0f2044] border-[#0f2044] text-white"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+                  }`}
+                >
+                  <span className="text-xl">{cat.icon}</span>
+                  <span className="text-xs font-medium leading-tight">
+                    {cat.name}
+                  </span>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Describe the issue *
-            </label>
+          <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">
+            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+              Describe the Issue
+            </h2>
             <textarea
               name="description"
               value={form.description}
               onChange={handleChange}
               required
               rows={4}
-              placeholder="Please describe what's happening in as much detail as possible..."
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="Please describe what's happening in as much detail as possible — when it started, what you've already tried, any error messages or noises..."
+              className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
           </div>
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && (
+            <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+              {error}
+            </p>
+          )}
 
           <button
             type="submit"
             disabled={!isValid || loading}
-            className="bg-blue-600 text-white rounded-lg px-4 py-3 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="bg-[#0f2044] text-white rounded-xl px-4 py-3.5 text-sm font-semibold hover:bg-blue-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? "Submitting... (this may take a moment)" : "Submit Request"}
+            {loading
+              ? "Submitting... (generating your guide)"
+              : "Submit Request"}
           </button>
         </form>
       </div>
