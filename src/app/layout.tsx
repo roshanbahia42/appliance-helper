@@ -13,8 +13,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Appliance Helper",
-  description: "Troubleshoot your household appliances",
+  title: "Student Maintenance Hub",
+  description: "Report maintenance issues at your student property",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Maintenance",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({

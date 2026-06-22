@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { Resend } from "resend";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { CATEGORIES } from "@/lib/categories";
 
 const anthropic = new Anthropic();
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -12,25 +13,23 @@ function generateReference() {
   return `MT-${year}-${num}`;
 }
 
-const CATEGORY_CONTEXT: Record<string, string> = {
-  Heating:
-    "heating systems including boilers, radiators, hot water cylinders, and thermostats in a rented student property",
-  Plumbing:
-    "plumbing issues including taps, pipes, toilets, blocked drains, and water pressure in a rented student property",
-  Electrical:
-    "electrical issues including sockets, switches, fuse boxes, tripped circuits, and lighting in a rented student property",
-  "Kitchen Appliances":
-    "kitchen appliances including washing machines, dryers, fridges, freezers, ovens, microwaves, and dishwashers in a rented student property",
-  Bathroom:
-    "bathroom issues including showers, baths, toilets, taps, and extractor fans in a rented student property",
-  "Doors & Windows":
-    "door and window issues including locks, hinges, handles, seals, draughts, and broken panes in a rented student property",
-  Garden:
-    "garden and outdoor issues including overgrown areas, blocked gutters, and outdoor lighting in a rented student property",
-  "Lost Key":
-    "lost or broken keys for a rented student property, including what steps to take immediately, who to contact, and what to expect regarding replacement costs",
-  Other: "general maintenance issues in a rented student property",
-};
+function buildAnswerSummary(
+  category: string,
+  answers: Record<string, string>
+): string {
+  const cat = CATEGORIES.find((c) => c.name === category);
+  if (!cat || cat.questions.length === 0) return "";
+
+  const lines = cat.questions
+    .filter((q) => answers[q.id])
+    .map((q) => {
+      const selected = q.options?.find((o) => o.value === answers[q.id]);
+      const answerLabel = selected?.label ?? answers[q.id];
+      return `- ${q.label}: ${answerLabel}`;
+    });
+
+  return lines.join("\n");
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -40,16 +39,12 @@ export async function POST(request: NextRequest) {
     tenant_phone,
     property_address,
     category,
+    answers = {},
+    urgent = false,
     description,
   } = body;
 
-  if (
-    !tenant_name ||
-    !tenant_email ||
-    !property_address ||
-    !category ||
-    !description
-  ) {
+  if (!tenant_name || !tenant_email || !property_address || !category) {
     return NextResponse.json(
       { error: "Missing required fields" },
       { status: 400 }
@@ -57,28 +52,38 @@ export async function POST(request: NextRequest) {
   }
 
   const reference = generateReference();
-  const context =
-    CATEGORY_CONTEXT[category] ||
-    "maintenance issues in a rented student property";
+  const answerSummary = buildAnswerSummary(category, answers);
+
+  const userMessage = [
+    `Category: ${category}`,
+    `Property: ${property_address}`,
+    answerSummary ? `Reported details:\n${answerSummary}` : "",
+    description ? `Additional context: ${description}` : "",
+    urgent ? "⚠️ This has been flagged as urgent by the tenant." : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   console.log("Calling Claude...");
   const aiResponse = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 1500,
-    system: `You are a helpful maintenance assistant for students in rented accommodation. You help tenants troubleshoot ${context}.
+    system: `You are a helpful maintenance assistant for students in rented accommodation in the UK.
 
-When given a description of a problem:
-1. Provide clear, numbered troubleshooting steps the student can safely try themselves
-2. Use simple, non-technical language — assume no prior knowledge
-3. Clearly flag anything dangerous or that must only be handled by a professional (gas leaks, exposed wiring, major structural issues)
-4. Be specific and actionable — tell them exactly what to check or do
-5. End with one sentence on when to escalate to the landlord
+You will be given structured details about a maintenance issue — the category, specific answers to diagnostic questions, and any additional context the tenant has provided.
 
-Do not use markdown headers or bullet points. Use plain numbered lists only. Keep the response under 400 words.`,
+Your job:
+1. Use the specific answers provided to give targeted, actionable troubleshooting steps — not generic advice
+2. Number each step clearly. Use plain text only — no markdown headers or bullet points
+3. Be direct and non-technical — assume the tenant has no prior knowledge
+4. If any answer suggests a safety risk (burning smell, flooding, no security), lead with clear safety instructions before anything else
+5. End with one sentence telling the tenant when to use the "I still need help" button
+
+Keep the response under 350 words.`,
     messages: [
       {
         role: "user",
-        content: `Issue description: ${description}\nCategory: ${category}\nProperty: ${property_address}`,
+        content: userMessage,
       },
     ],
   });
@@ -95,9 +100,11 @@ Do not use markdown headers or bullet points. Use plain numbered lists only. Kee
     tenant_email,
     tenant_phone: tenant_phone || null,
     category,
-    description,
+    description: answerSummary
+      ? `${answerSummary}${description ? `\n\nAdditional context: ${description}` : ""}`
+      : description || "",
     ai_response: aiText,
-    status: "open",
+    status: urgent ? "escalated" : "open",
   });
 
   if (dbError) {
@@ -111,7 +118,7 @@ Do not use markdown headers or bullet points. Use plain numbered lists only. Kee
   await resend.emails.send({
     from: "onboarding@resend.dev",
     to: tenant_email,
-    subject: `Maintenance Request Received — ${reference}`,
+    subject: `${urgent ? "⚠️ Urgent — " : ""}Maintenance Request Received — ${reference}`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #111;">
         <h2 style="color: #1d4ed8; margin-bottom: 4px;">Maintenance Request Received</h2>
@@ -121,13 +128,17 @@ Do not use markdown headers or bullet points. Use plain numbered lists only. Kee
           <p style="margin: 0;"><strong>Reference:</strong> ${reference}</p>
           <p style="margin: 0;"><strong>Category:</strong> ${category}</p>
           <p style="margin: 0;"><strong>Property:</strong> ${property_address}</p>
-          <p style="margin: 0;"><strong>Issue:</strong> ${description}</p>
+          ${urgent ? '<p style="margin: 0; color: #dc2626;"><strong>⚠️ Flagged as urgent</strong></p>' : ""}
         </div>
-        <h3 style="color: #1d4ed8;">Before we arrange a visit, please try these steps:</h3>
+        ${
+          urgent
+            ? '<p style="color: #dc2626; font-weight: bold;">Your request has been flagged as urgent. We will be in touch as soon as possible.</p>'
+            : `<h3 style="color: #1d4ed8;">Before we arrange a visit, please try these steps:</h3>
         <div style="line-height: 1.8; white-space: pre-wrap;">${aiText}</div>
         <p style="color: #6b7280; font-size: 14px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
-          If these steps don't resolve your issue, please go back to the request page and click "I still need help". Keep your reference number: <strong>${reference}</strong>
-        </p>
+          If these steps don't resolve your issue, go back to your confirmation page and click "I still need help". Keep your reference number: <strong>${reference}</strong>
+        </p>`
+        }
       </div>
     `,
   });
