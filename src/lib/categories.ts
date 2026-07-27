@@ -53,7 +53,7 @@ export const CATEGORIES: Category[] = [
         description: "Burst pipe or significant flooding",
         isUrgent: true,
         tips: [
-          "If safe to do so, turn off the main water supply immediately (stopcock — usually under the sink or in a cupboard)",
+          "If safe to do so, turn off the main water supply immediately (stopcock — usually under the kitchen sink or in a cupboard)",
           "Turn off electricity at the mains if water is near electrical outlets or appliances",
           "Move valuables and electronics away from the water",
           "Use towels, buckets, or mops to contain the water if possible",
@@ -487,16 +487,408 @@ export const CATEGORIES: Category[] = [
       },
     ],
   },
-  // Stub categories — subcategories to be added from the CSV
-  { id: "pests", name: "Pests and Environmental", icon: "🐛", subcategories: [] },
-  { id: "bathroom", name: "Bathroom Fittings", icon: "🛁", subcategories: [] },
-  { id: "kitchen", name: "Kitchen", icon: "🍳", subcategories: [] },
-  { id: "lighting", name: "Lighting", icon: "💡", subcategories: [] },
-  { id: "walls-ceilings", name: "Walls, Ceilings and Floors", icon: "🧱", subcategories: [] },
-  { id: "security", name: "Security and Safety", icon: "🔒", subcategories: [] },
-  { id: "garden", name: "External and Garden", icon: "🌿", subcategories: [] },
-  { id: "furniture", name: "Furniture and Furnishing", icon: "🛋️", subcategories: [] },
-  { id: "internet", name: "Internet, TV and Phone", icon: "📡", subcategories: [] },
-  { id: "communal", name: "Communal Areas", icon: "🏢", subcategories: [] },
-  { id: "other", name: "Other / Not Sure", icon: "🔧", subcategories: [] },
+  {
+    id: "pests",
+    name: "Pests and Environmental",
+    icon: "🐛",
+    subcategories: [
+      {
+        id: "pest-infestation",
+        name: "Pest Infestation",
+        description: "Insects, ants, or other pests found in the property",
+        tips: [
+          "Identify and seal obvious entry points — check gaps around pipes, skirting boards, and external doors",
+          "Remove accessible food sources: keep worktops clean and store food in sealed containers",
+          "Check that communal bin areas are not overflowing and attracting pests",
+          "Take photos of any droppings, damage, or pest activity to include with your report",
+          "Do not use pesticide sprays without permission — some can damage surfaces or affect other residents",
+        ],
+      },
+      {
+        id: "rats-mice",
+        name: "Rats or Mice",
+        description: "Sightings, droppings, or scratching noises indicating rodents",
+        isUrgent: true,
+        tips: [
+          "Do not attempt to handle or trap rodents yourself — a professional pest controller is required",
+          "Block visible gaps around pipes, under doors, and in skirting boards with steel wool as a temporary measure",
+          "Store all food in sealed hard containers and remove any pet food left out overnight",
+          "Note where you have seen activity — this helps the pest controller locate entry points efficiently",
+          "Report immediately: rodent infestations spread quickly and are a health hazard",
+        ],
+      },
+      {
+        id: "mould-condensation",
+        name: "Mould or Condensation",
+        description: "Black mould spots, damp patches, or heavy condensation on walls or windows",
+        tips: [
+          "Open windows daily for ventilation — even 10 minutes in the morning makes a significant difference",
+          "Always use the extractor fan when showering or cooking, and leave it running for 15 minutes after",
+          "Avoid drying laundry indoors; if unavoidable, open a window in that room",
+          "Wipe condensation from windows and windowsills with a dry cloth each morning",
+          "Small surface mould spots can be cleaned with diluted bleach (1 part bleach to 4 parts water) wearing rubber gloves",
+          "If mould covers a large area, is on the ceiling, or keeps returning, report it — do not attempt to clean it yourself",
+        ],
+      },
+    ],
+  },
+  {
+    id: "bathroom",
+    name: "Bathroom Fittings",
+    icon: "🛁",
+    subcategories: [
+      {
+        id: "shower-weak-flow",
+        name: "Shower Not Working or Weak Flow",
+        description: "No water, weak pressure, or shower not heating properly",
+        tips: [
+          "Unscrew the shower head and soak it in white vinegar overnight to clear limescale — this is the most common cause of weak flow",
+          "Check the shower temperature and flow control is set correctly",
+          "For electric showers: check the circuit breaker has not tripped in the fuse box",
+          "For power showers: look for an isolation switch near the airing cupboard that may have been accidentally switched off",
+          "If pressure is low throughout the whole property, see the Plumbing and Water section instead",
+        ],
+      },
+      {
+        id: "bath-basin-draining",
+        name: "Bath or Basin Draining Slowly",
+        description: "Water draining very slowly or standing in the basin",
+        tips: [
+          "Remove and clean the drain cover or plug — built-up hair is the most common cause",
+          "Use a plunger: create a firm seal over the drain and pump vigorously",
+          "Try pouring bicarbonate of soda (half a cup) then white vinegar, wait 30 minutes, then flush with boiling water",
+          "Avoid chemical drain cleaners frequently as they can damage older pipes",
+        ],
+      },
+      {
+        id: "tap-dripping",
+        name: "Tap Dripping or Leaking",
+        description: "Tap dripping when turned off, or leaking around the base",
+        tips: [
+          "Ensure the tap is fully turned off — some taps require a firm twist",
+          "Place a towel under the tap to catch drips and prevent surface damage",
+          "If water is leaking from a pipe under the sink, turn the isolation valve (under the sink, clockwise) to cut the water supply to that tap",
+          "Do not attempt to dismantle the tap — report it and we will arrange a plumber",
+        ],
+      },
+      {
+        id: "toilet-seat",
+        name: "Toilet Seat Loose or Broken",
+        description: "Toilet seat wobbling, cracked, or broken off the hinge",
+        tips: [
+          "Check whether the fixing bolts at the back of the seat are simply loose — some can be tightened by hand or with a screwdriver",
+          "Avoid using a cracked seat — the edges can be sharp and cause injury",
+          "Note the toilet brand or model if visible on the cistern — this helps us order the correct replacement quickly",
+        ],
+      },
+    ],
+  },
+  {
+    id: "kitchen",
+    name: "Kitchen",
+    icon: "🍳",
+    subcategories: [
+      {
+        id: "cupboard-hinge-broken",
+        name: "Cupboard Door or Hinge Broken",
+        description: "Door hanging off, hinge snapped, or door will not close properly",
+        tips: [
+          "Check whether the hinge screws are simply loose — tighten with a screwdriver",
+          "Many kitchen hinges have a small adjustment screw on the barrel that can realign a door that is slightly off",
+          "If the hinge is physically snapped, lean the door safely against the wall rather than leaving it hanging",
+          "Take a clear photo of the broken hinge and its position in the kitchen",
+        ],
+      },
+      {
+        id: "kitchen-sink-blocked",
+        name: "Kitchen Sink Blocked",
+        description: "Sink draining slowly or not draining at all",
+        tips: [
+          "Clear the sink strainer or filter basket first — grease and food debris is the most common cause",
+          "Pour boiling water down the drain to dissolve grease buildup",
+          "Try bicarbonate of soda followed by white vinegar, wait 30 minutes, then flush with boiling water",
+          "If water is backing up into the dishwasher or washing machine, do not run those appliances until the blockage is cleared",
+        ],
+      },
+      {
+        id: "worktop-damaged",
+        name: "Worktop or Surface Damaged",
+        description: "Worktop burnt, cracked, chipped, or edge lifting away",
+        tips: [
+          "Avoid using the damaged area for food preparation — cracked or lifting surfaces can harbour bacteria",
+          "Do not attempt to re-glue a lifting worktop edge yourself — the fixings below may also need attention",
+          "Take photos of the damage from multiple angles showing the full extent",
+        ],
+      },
+    ],
+  },
+  {
+    id: "lighting",
+    name: "Lighting",
+    icon: "💡",
+    subcategories: [
+      {
+        id: "ceiling-light",
+        name: "Ceiling Light Not Working",
+        description: "Light fitting still not working after changing the bulb",
+        tips: [
+          "Try a brand-new bulb — even bulbs fresh out of the box can occasionally be faulty",
+          "Check the fuse box for a tripped breaker on the lighting circuit and reset if needed",
+          "Check whether other lights in the same room or area are working — if not, it is a circuit issue",
+          "If the fitting flickers, buzzes, or smells of burning, turn it off at the wall and do not use it",
+        ],
+      },
+      {
+        id: "under-cabinet-light",
+        name: "Under-Cabinet or Worktop Light Not Working",
+        description: "Kitchen strip light or spotlight under the cabinets not working",
+        tips: [
+          "Check for a separate inline switch or pull cord specific to the under-cabinet lights",
+          "For LED strips: the driver unit (a small box usually inside the cabinet) may have failed — check for a reset button on it",
+          "Check whether the issue is with all lights in the run or just one section — one dead section often indicates a loose connector",
+        ],
+      },
+      {
+        id: "outdoor-light",
+        name: "External or Security Light Not Working",
+        description: "Outdoor light or motion-sensor (PIR) light not coming on",
+        tips: [
+          "Check the fuse box for a tripped outdoor lighting circuit",
+          "For PIR (motion sensor) lights: check the sensor head is not covered or obstructed, and that the sensitivity or timer settings have not been knocked",
+          "Do not attempt any work on outdoor electrical fittings yourself — we will send a qualified electrician",
+        ],
+      },
+    ],
+  },
+  {
+    id: "walls-ceilings",
+    name: "Walls, Ceilings and Floors",
+    icon: "🧱",
+    subcategories: [
+      {
+        id: "damp-patch",
+        name: "Damp Patch or Staining",
+        description: "Water staining, damp patches, or discolouration on walls or ceiling",
+        tips: [
+          "Check whether the affected wall is directly beneath a bathroom or kitchen above — a leak from the floor above is a common cause",
+          "Check whether staining worsens after heavy rain — this can point to a roof or gutter issue",
+          "Do not paint over damp patches — the damp will come back and may spread further underneath",
+          "Photograph the full extent of the stain and note whether it is growing or stable",
+        ],
+      },
+      {
+        id: "damaged-flooring",
+        name: "Damaged or Lifting Flooring",
+        description: "Torn carpet, lifting vinyl, cracked tiles, or loose floorboards",
+        tips: [
+          "Tape down any lifted edges temporarily to prevent a trip hazard",
+          "Avoid walking on cracked or broken tiles — edges can be sharp",
+          "Carpet edges lifting at doorways are a common trip hazard — report these promptly",
+          "Take photos showing the full area affected",
+        ],
+      },
+      {
+        id: "crack-hole",
+        name: "Crack or Hole in Wall or Ceiling",
+        description: "Visible crack, hole, or crumbling plaster",
+        tips: [
+          "Hairline cracks in plaster are usually normal structural settling — report so we can monitor them",
+          "Cracks wider than 3mm, diagonal cracks, or cracks that appear to be growing should be reported promptly",
+          "Do not attempt to fill cracks yourself as this can mask underlying movement",
+          "If plaster is bulging or sounds hollow when tapped gently, avoid touching the area in case it falls",
+        ],
+      },
+    ],
+  },
+  {
+    id: "security",
+    name: "Security and Safety",
+    icon: "🔒",
+    subcategories: [
+      {
+        id: "carbon-monoxide",
+        name: "Carbon Monoxide Alarm Sounding",
+        description: "CO detector beeping continuously or showing an alert",
+        isUrgent: true,
+        tips: [
+          "EVACUATE IMMEDIATELY — leave all doors open behind you to ventilate the building",
+          "Do not turn any lights or appliances on or off as you leave",
+          "Once outside, call the Gas Emergency line: 0800 111 999",
+          "Call 999 if anyone feels unwell, dizzy, has a headache, or seems confused",
+          "Do NOT re-enter the property until emergency services confirm it is safe",
+        ],
+      },
+      {
+        id: "smoke-alarm-security",
+        name: "Smoke Alarm Beeping or Faulty",
+        description: "Smoke alarm chirping, triggering without reason, or not working at all",
+        tips: [
+          "A slow single chirp (every 30–60 seconds) means the battery needs replacing — use a fresh 9V battery",
+          "After replacing the battery, press and hold the test button to reset and confirm it is working",
+          "Gently vacuum dust from the vents — dust buildup is a common cause of false alarms",
+          "Never remove or disable a smoke detector — it is a legal requirement",
+          "If the alarm sounds continuously with no sign of fire or smoke, evacuate and call 999",
+        ],
+      },
+      {
+        id: "entry-intercom",
+        name: "Entry Phone or Intercom Not Working",
+        description: "Front door intercom or door entry system not functioning",
+        tips: [
+          "Check that the handset inside the property is fully seated in its cradle",
+          "Check whether your key fob still operates the door — this helps confirm whether the issue is the intercom specifically or the main lock",
+          "Check with neighbours to see if it is a building-wide fault",
+        ],
+      },
+    ],
+  },
+  {
+    id: "garden",
+    name: "External and Garden",
+    icon: "🌿",
+    subcategories: [
+      {
+        id: "fence-damaged",
+        name: "Fence Damaged or Fallen",
+        description: "Fence panel blown down, broken, or leaning significantly",
+        tips: [
+          "Do not attempt to re-fix fence panels yourself — they are heavier and more involved than they look",
+          "If the gap creates a security or safety concern, flag this clearly in your report",
+          "Take photos showing the damage and its location relative to the property",
+        ],
+      },
+      {
+        id: "pathway-damaged",
+        name: "Pathway, Step or Paving Damaged",
+        description: "Cracked or uneven paving creating a trip hazard",
+        tips: [
+          "Mark the hazard visibly (e.g. a plant pot or object) while waiting for repair",
+          "Avoid the damaged area in wet or icy conditions",
+          "Take clear photos showing the damage and how it relates to the walkway or entrance",
+        ],
+      },
+      {
+        id: "bin-issue",
+        name: "Bin or Waste Collection Issue",
+        description: "Bin storage overflowing, damaged, or missed collection",
+        tips: [
+          "Check the local council's collection schedule online — missed days are often rescheduled after bank holidays",
+          "Ensure recycling is not contaminated — incorrect sorting is the most common reason for refusal to collect",
+          "Do not leave bin bags outside the bin store as this attracts pests and may result in council fines",
+          "Report overflowing communal bins promptly to prevent pest issues",
+        ],
+      },
+    ],
+  },
+  {
+    id: "furniture",
+    name: "Furniture and Furnishing",
+    icon: "🛋️",
+    subcategories: [
+      {
+        id: "bed-frame-broken",
+        name: "Bed Frame Broken",
+        description: "Bed frame cracked, broken, or slats missing or collapsed",
+        tips: [
+          "Check whether a slat has simply shifted out of position — repositioning often resolves this without repair",
+          "Do not continue using the bed if the frame is cracked or structurally unsafe",
+          "Note whether the mattress is also sagging into the frame — mention this in your report",
+          "Take photos of the broken section from multiple angles",
+        ],
+      },
+      {
+        id: "wardrobe-broken",
+        name: "Wardrobe or Drawers Broken",
+        description: "Wardrobe door off its rail, drawer mechanism broken, or shelving collapsed",
+        tips: [
+          "For a wardrobe door off its track: do not force it back onto the rail — the rollers or track may need replacing",
+          "Remove the contents from any collapsed shelf before the weight causes further damage",
+          "Take photos showing the broken area clearly",
+        ],
+      },
+      {
+        id: "furniture-damaged",
+        name: "Other Furniture Damaged",
+        description: "Chair, desk, sofa, or other furniture structurally broken",
+        tips: [
+          "Stop using a broken chair or table immediately — a collapsing piece of furniture can cause injury",
+          "Note when and how the damage occurred — this helps establish responsibility",
+          "Take clear photos of the damage",
+        ],
+      },
+    ],
+  },
+  {
+    id: "internet",
+    name: "Internet, TV and Phone",
+    icon: "📡",
+    subcategories: [
+      {
+        id: "internet-not-working",
+        name: "Internet Not Working",
+        description: "Wi-Fi not connecting (landlord-provided broadband)",
+        tips: [
+          "Unplug the router from the mains, wait 30 seconds, then plug it back in — this resolves the majority of broadband issues",
+          "Check whether other devices in the property can connect — if yes, the issue is with your device, not the router",
+          "Check the router's lights — a red or off broadband indicator usually means a line fault",
+          "Check with housemates to see if the issue affects everyone in the property",
+          "Note: if the issue is with your personal mobile data plan, that falls outside what we manage",
+        ],
+      },
+      {
+        id: "tv-signal",
+        name: "TV Signal or Aerial Issue",
+        description: "No TV signal, poor picture, or aerial socket not working",
+        tips: [
+          "Check all aerial cable connections at the TV and at the wall socket — ensure they are pushed in firmly",
+          "Run an automatic channel scan / retune from your TV settings menu",
+          "A quick search for your postcode and 'TV signal' will usually show if a regional transmitter fault is affecting your area",
+          "Streaming services (iPlayer, Netflix, etc.) work via Wi-Fi and are unaffected by an aerial issue",
+        ],
+      },
+    ],
+  },
+  {
+    id: "communal",
+    name: "Communal Areas",
+    icon: "🏢",
+    subcategories: [
+      {
+        id: "communal-lighting",
+        name: "Hallway or Stairway Lighting Not Working",
+        description: "Lights in the shared hallway, stairwell, or landing not working",
+        tips: [
+          "Note whether it is a single fitting or the entire hallway — this helps identify the fault",
+          "If the light is sensor or timer activated, check whether the sensor may be blocked or the settings changed",
+          "Report this urgently — an unlit stairway or hallway is a safety hazard",
+        ],
+      },
+      {
+        id: "communal-door",
+        name: "Communal Door Not Closing or Locking",
+        description: "Shared entrance door, fire door, or gate not closing or latching properly",
+        tips: [
+          "Check for any obstruction preventing the door from closing fully",
+          "Try pulling the door firmly closed — some communal doors need a firm push to engage the latch",
+          "Report immediately if the front door is not securing — this is a security issue for all residents",
+        ],
+      },
+      {
+        id: "communal-maintenance",
+        name: "Communal Area Needs Attention",
+        description: "Shared spaces are untidy, damaged, or require general maintenance",
+        tips: [
+          "Do not move items left by other tenants yourself — report it and we will deal with it",
+          "Take photos to clearly show the issue and its location within the building",
+          "For recurring issues, let us know — we may need to address expectations with all residents",
+        ],
+      },
+    ],
+  },
+  {
+    id: "other",
+    name: "Other / Not Sure",
+    icon: "🔧",
+    subcategories: [],
+  },
 ];

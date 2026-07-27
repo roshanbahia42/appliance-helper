@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES, type Category, type Subcategory } from "@/lib/categories";
-import { PROPERTIES } from "@/lib/properties";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -13,14 +12,6 @@ interface FormState {
   phone: string;
   description: string;
 }
-
-const STEP_LABELS: Record<Step, string> = {
-  1: "Category",
-  2: "Issue Type",
-  3: "Help Guide",
-  4: "Property",
-  5: "Your Details",
-};
 
 function ProgressBar({ step }: { step: Step }) {
   return (
@@ -37,6 +28,28 @@ function ProgressBar({ step }: { step: Step }) {
   );
 }
 
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1 text-sm font-medium text-[#0f2044] hover:opacity-70 transition-opacity mb-2"
+    >
+      ← Back
+    </button>
+  );
+}
+
+function UrgentBadge({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 bg-red-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full mb-3">
+      ⚠ {label}
+    </span>
+  );
+}
+
+const validateEmail = (email: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+
 export default function Home() {
   const router = useRouter();
 
@@ -49,9 +62,13 @@ export default function Home() {
   const [selectedProperty, setSelectedProperty] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [form, setForm] = useState<FormState>({ name: "", email: "", phone: "", description: "" });
+  const [emailError, setEmailError] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [solved, setSolved] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const goTo = (s: Step) => setHistory((prev) => [...prev, s]);
   const goBack = () => {
@@ -78,20 +95,42 @@ export default function Home() {
     goTo(3);
   };
 
-  const filteredProperties = PROPERTIES.filter((p) =>
-    propertySearch.length > 1 &&
-    p.toLowerCase().includes(propertySearch.toLowerCase())
+  const fetchSuggestions = (input: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setSelectedProperty("");
+    if (input.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    setSuggestionsLoading(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/places?input=${encodeURIComponent(input)}`);
+        const data = await res.json();
+        setSuggestions(data.suggestions ?? []);
+      } finally {
+        setSuggestionsLoading(false);
+      }
+    }, 300);
+  };
+
+  const requiresDescription = !hasSubcategories(
+    category ?? ({ subcategories: [] } as unknown as Category)
   );
 
-  const requiresDescription = !hasSubcategories(category ?? { subcategories: [] } as unknown as Category);
   const isFormValid =
     form.name &&
     form.email &&
+    validateEmail(form.email) &&
     selectedProperty &&
     (!requiresDescription || form.description);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!validateEmail(form.email)) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -174,14 +213,13 @@ export default function Home() {
                 <button
                   key={cat.id}
                   onClick={() => selectCategory(cat)}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border text-center transition-all ${
+                  className={`flex items-center justify-center p-4 rounded-xl border text-center transition-all min-h-[72px] ${
                     cat.isEmergency
                       ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-400"
                       : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#0f2044] hover:bg-blue-50 hover:text-[#0f2044]"
                   }`}
                 >
-                  <span className="text-3xl">{cat.icon}</span>
-                  <span className="text-xs font-medium leading-tight">{cat.name}</span>
+                  <span className="text-xs font-semibold leading-tight">{cat.name}</span>
                 </button>
               ))}
             </div>
@@ -195,19 +233,16 @@ export default function Home() {
   if (step === 2 && category) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <header className={`px-6 pt-6 pb-5 ${category.isEmergency ? "bg-red-700" : "bg-[#0f2044]"}`}>
+        <header className="bg-[#0f2044] px-6 pt-6 pb-5">
           <div className="max-w-xl mx-auto">
-            <button onClick={goBack} className="text-white/60 text-sm mb-3 flex items-center gap-1 hover:text-white">
-              ← Back
-            </button>
-            <h1 className="text-xl font-bold text-white">
-              {category.icon} {category.name}
-            </h1>
+            {category.isEmergency && <UrgentBadge label="Emergency" />}
+            <h1 className="text-xl font-bold text-white">{category.name}</h1>
             <p className="text-white/70 text-sm mt-0.5">Select the specific issue</p>
             <ProgressBar step={2} />
           </div>
         </header>
         <div className="max-w-xl mx-auto p-6 flex flex-col gap-3">
+          <BackButton onClick={goBack} />
           {category.subcategories.map((sub) => (
             <button
               key={sub.id}
@@ -242,11 +277,9 @@ export default function Home() {
 
     return (
       <div className="min-h-screen bg-slate-50">
-        <header className={`px-6 pt-6 pb-5 ${isUrgent ? "bg-red-700" : "bg-[#0f2044]"}`}>
+        <header className="bg-[#0f2044] px-6 pt-6 pb-5">
           <div className="max-w-xl mx-auto">
-            <button onClick={goBack} className="text-white/60 text-sm mb-3 flex items-center gap-1 hover:text-white">
-              ← Back
-            </button>
+            {isUrgent && <UrgentBadge label={category.isEmergency ? "Emergency" : "Urgent"} />}
             <h1 className="text-xl font-bold text-white">{subcategory.name}</h1>
             <p className="text-white/70 text-sm mt-0.5">
               {isUrgent ? "Follow these steps immediately" : "Before you report, please try these steps"}
@@ -256,11 +289,12 @@ export default function Home() {
         </header>
 
         <div className="max-w-xl mx-auto p-6 flex flex-col gap-4">
-          <div className={`rounded-xl border p-5 ${
-            isUrgent
-              ? "bg-red-50 border-red-200"
-              : "bg-blue-50 border-blue-200"
-          }`}>
+          <BackButton onClick={goBack} />
+          <div
+            className={`rounded-xl border p-5 ${
+              isUrgent ? "bg-red-50 border-red-200" : "bg-blue-50 border-blue-200"
+            }`}
+          >
             <div className="flex items-center gap-2 mb-4">
               <span className="text-xl">{isUrgent ? "⚠️" : "ℹ️"}</span>
               <h2 className={`font-semibold text-sm ${isUrgent ? "text-red-900" : "text-blue-900"}`}>
@@ -270,9 +304,11 @@ export default function Home() {
             <ol className="flex flex-col gap-3">
               {subcategory.tips.map((tip, i) => (
                 <li key={i} className="flex gap-3 items-start">
-                  <span className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                    isUrgent ? "bg-red-600 text-white" : "bg-blue-600 text-white"
-                  }`}>
+                  <span
+                    className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                      isUrgent ? "bg-red-600 text-white" : "bg-blue-600 text-white"
+                    }`}
+                  >
                     {i + 1}
                   </span>
                   <p className={`text-sm leading-relaxed ${isUrgent ? "text-red-900 font-medium" : "text-blue-900"}`}>
@@ -311,15 +347,13 @@ export default function Home() {
       <div className="min-h-screen bg-slate-50">
         <header className="bg-[#0f2044] px-6 pt-6 pb-5">
           <div className="max-w-xl mx-auto">
-            <button onClick={goBack} className="text-white/60 text-sm mb-3 flex items-center gap-1 hover:text-white">
-              ← Back
-            </button>
             <h1 className="text-xl font-bold text-white">Which property?</h1>
             <p className="text-blue-200 text-sm mt-0.5">Select your property address</p>
             <ProgressBar step={4} />
           </div>
         </header>
         <div className="max-w-xl mx-auto p-6">
+          <BackButton onClick={goBack} />
           <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">
             <div className="relative">
               <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -330,19 +364,22 @@ export default function Home() {
                 value={selectedProperty || propertySearch}
                 onChange={(e) => {
                   setPropertySearch(e.target.value);
-                  setSelectedProperty("");
                   setShowSuggestions(true);
+                  fetchSuggestions(e.target.value);
                 }}
                 onFocus={() => setShowSuggestions(true)}
-                placeholder="e.g. 12 Example Street"
+                placeholder="e.g. 12 Example Street, London"
                 className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               {selectedProperty && (
                 <span className="absolute right-3 top-9 text-green-600 text-sm">✓</span>
               )}
-              {showSuggestions && filteredProperties.length > 0 && !selectedProperty && (
+              {suggestionsLoading && propertySearch.length > 1 && !selectedProperty && (
+                <p className="mt-2 text-xs text-slate-400">Searching...</p>
+              )}
+              {showSuggestions && suggestions.length > 0 && !selectedProperty && (
                 <ul className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
-                  {filteredProperties.map((p) => (
+                  {suggestions.map((p: string) => (
                     <li key={p}>
                       <button
                         type="button"
@@ -350,6 +387,7 @@ export default function Home() {
                           setSelectedProperty(p);
                           setPropertySearch(p);
                           setShowSuggestions(false);
+                          setSuggestions([]);
                         }}
                         className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-blue-50 hover:text-[#0f2044] border-b border-slate-100 last:border-0"
                       >
@@ -359,14 +397,18 @@ export default function Home() {
                   ))}
                 </ul>
               )}
-              {showSuggestions && propertySearch.length > 1 && filteredProperties.length === 0 && !selectedProperty && (
-                <p className="mt-2 text-xs text-red-600">
-                  No matching properties found. Please check your address or contact the landlady directly.
-                </p>
-              )}
+              {!suggestionsLoading &&
+                showSuggestions &&
+                propertySearch.length > 1 &&
+                suggestions.length === 0 &&
+                !selectedProperty && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    No suggestions found — try a different format, e.g. house number then street name.
+                  </p>
+                )}
             </div>
             <p className="text-xs text-slate-400">
-              Your address must match one of the managed properties. If yours is not showing, please get in touch.
+              Start typing your full address and select it from the suggestions.
             </p>
           </div>
           <button
@@ -387,15 +429,13 @@ export default function Home() {
       <div className="min-h-screen bg-slate-50">
         <header className="bg-[#0f2044] px-6 pt-6 pb-5">
           <div className="max-w-xl mx-auto">
-            <button onClick={goBack} className="text-white/60 text-sm mb-3 flex items-center gap-1 hover:text-white">
-              ← Back
-            </button>
             <h1 className="text-xl font-bold text-white">Your Details</h1>
             <p className="text-blue-200 text-sm mt-0.5">Almost done — just a few more details</p>
             <ProgressBar step={5} />
           </div>
         </header>
         <div className="max-w-xl mx-auto p-6">
+          <BackButton onClick={goBack} />
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">
               <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-500 flex gap-2">
@@ -405,7 +445,10 @@ export default function Home() {
               {category && (
                 <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-500 flex gap-2">
                   <span>{category.icon}</span>
-                  <span>{category.name}{subcategory ? ` — ${subcategory.name}` : ""}</span>
+                  <span>
+                    {category.name}
+                    {subcategory ? ` — ${subcategory.name}` : ""}
+                  </span>
                 </div>
               )}
             </div>
@@ -426,13 +469,26 @@ export default function Home() {
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
                   <input
-                    type="email"
+                    type="text"
                     value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    onChange={(e) => {
+                      setForm({ ...form, email: e.target.value });
+                      setEmailError("");
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value && !validateEmail(e.target.value)) {
+                        setEmailError("Please enter a valid email address");
+                      }
+                    }}
                     required
                     placeholder="you@email.com"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      emailError ? "border-red-400" : "border-slate-300"
+                    }`}
                   />
+                  {emailError && (
+                    <p className="text-red-600 text-xs mt-1">{emailError}</p>
+                  )}
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Phone (optional)</label>
