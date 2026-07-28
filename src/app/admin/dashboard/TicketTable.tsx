@@ -80,8 +80,8 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     router.refresh();
   };
 
-  const copyForHandyman = (ticket: Ticket) => {
-    const lines = [
+  const formatHandymanText = (ticket: Ticket) =>
+    [
       `Reference: ${ticket.reference_number}`,
       `Property: ${ticket.property_address}`,
       `Issue: ${ticket.category}`,
@@ -93,10 +93,19 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       (ticket.media_urls?.length ?? 0) > 0
         ? `\nPhotos/videos:\n${ticket.media_urls!.join("\n")}`
         : null,
-    ].filter((l) => l !== null);
-    navigator.clipboard.writeText(lines.join("\n"));
+    ]
+      .filter((l) => l !== null)
+      .join("\n");
+
+  const copyForHandyman = (ticket: Ticket) => {
+    navigator.clipboard.writeText(formatHandymanText(ticket));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const whatsappForHandyman = (ticket: Ticket) => {
+    const text = encodeURIComponent(formatHandymanText(ticket));
+    window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
   return (
@@ -289,13 +298,21 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 )}
               </div>
 
-              {/* Copy for handyman */}
-              <button
-                onClick={() => copyForHandyman(selected)}
-                className="mt-1 w-full bg-gray-50 border border-gray-200 text-gray-600 rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-100 transition-colors"
-              >
-                {copied ? "Copied ✓" : "Copy details for handyman"}
-              </button>
+              {/* Handyman actions */}
+              <div className="mt-1 flex gap-2">
+                <button
+                  onClick={() => copyForHandyman(selected)}
+                  className="flex-1 bg-gray-50 border border-gray-200 text-gray-600 rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-100 transition-colors"
+                >
+                  {copied ? "Copied ✓" : "Copy details"}
+                </button>
+                <button
+                  onClick={() => whatsappForHandyman(selected)}
+                  className="flex-1 bg-[#25D366] text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-[#1ebe5d] transition-colors"
+                >
+                  WhatsApp
+                </button>
+              </div>
 
               {/* Attachments */}
               {(selected.media_urls ?? []).length > 0 && (
