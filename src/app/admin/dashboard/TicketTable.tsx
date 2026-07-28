@@ -120,7 +120,28 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
             alt="Attachment"
             className="max-w-full max-h-full rounded-lg object-contain"
             onClick={(e) => e.stopPropagation()}
+            onError={(e) => {
+              const el = e.currentTarget;
+              el.style.display = "none";
+              const fallback = el.nextElementSibling as HTMLElement | null;
+              if (fallback) fallback.style.display = "flex";
+            }}
           />
+          <div
+            style={{ display: "none" }}
+            className="flex-col items-center gap-3 text-white text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm opacity-80">This file can&apos;t be previewed in the browser</p>
+            <a
+              href={lightboxUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white text-gray-900 rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-100"
+            >
+              Download file
+            </a>
+          </div>
           <button
             onClick={() => setLightboxUrl(null)}
             className="absolute top-4 right-4 text-white text-2xl leading-none hover:opacity-70"

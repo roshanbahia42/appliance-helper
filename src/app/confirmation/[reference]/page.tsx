@@ -64,6 +64,31 @@ export default async function ConfirmationPage({
           </div>
         </div>
 
+        {ticket.media_urls && ticket.media_urls.length > 0 && (
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Your attachments</h2>
+            <div className="flex flex-col gap-2">
+              {ticket.media_urls.map((url: string, i: number) => {
+                const ext = url.split(".").pop()?.toLowerCase() ?? "";
+                const isVideo = ["mp4", "mov", "avi", "webm", "mkv"].includes(ext);
+                const isPreviewable = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+                if (isVideo) return <video key={i} src={url} controls className="w-full rounded-lg" />;
+                if (isPreviewable) return (
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                    <img src={url} alt={`Attachment ${i + 1}`} className="w-full rounded-lg" />
+                  </a>
+                );
+                return (
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-blue-700 bg-slate-50 rounded-lg px-3 py-2 hover:bg-slate-100">
+                    <span>📎</span><span>Attachment {i + 1} — tap to download</span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
           <p className="text-sm text-blue-900 leading-relaxed">
             Your landlady has been notified and will be in touch to arrange a repair.
