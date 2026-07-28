@@ -7,6 +7,7 @@ type Ticket = {
   id: string;
   reference_number: string;
   tenant_name: string;
+  tenant_room: string | null;
   tenant_email: string;
   tenant_phone: string | null;
   property_address: string;
@@ -33,6 +34,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [copied, setCopied] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
@@ -72,6 +74,15 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     setSearchTenant("");
   };
 
+  const deleteTicket = async (reference: string) => {
+    setActionLoading("delete");
+    await fetch(`/api/tickets/${reference}/delete`, { method: "POST" });
+    setActionLoading(null);
+    setSelected(null);
+    setConfirmDelete(false);
+    router.refresh();
+  };
+
   const updateStatus = async (reference: string, action: "resolved" | "escalate" | "reopen") => {
     setActionLoading(action);
     await fetch(`/api/tickets/${reference}/${action}`, { method: "POST" });
@@ -87,7 +98,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       `Issue: ${ticket.category}`,
       ticket.description ? `Details: ${ticket.description}` : null,
       ``,
-      `Tenant: ${ticket.tenant_name}`,
+      `Tenant: ${ticket.tenant_name}${ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}`,
       ticket.tenant_phone ? `Phone: ${ticket.tenant_phone}` : null,
       `Email: ${ticket.tenant_email}`,
       (ticket.media_urls?.length ?? 0) > 0
@@ -234,7 +245,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 {filtered.map((ticket) => (
                   <tr
                     key={ticket.id}
-                    onClick={() => setSelected(selected?.id === ticket.id ? null : ticket)}
+                    onClick={() => { setSelected(selected?.id === ticket.id ? null : ticket); setConfirmDelete(false); }}
                     className={`border-b border-gray-100 cursor-pointer transition-colors ${
                       selected?.id === ticket.id ? "bg-blue-50" : "hover:bg-gray-50"
                     }`}
@@ -278,7 +289,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
             </div>
 
             <div className="flex flex-col gap-2 text-sm">
-              <div><span className="text-gray-500">Tenant: </span><span className="text-gray-900">{selected.tenant_name}</span></div>
+              <div><span className="text-gray-500">Tenant: </span><span className="text-gray-900">{selected.tenant_name}{selected.tenant_room ? ` — Room ${selected.tenant_room}` : ""}</span></div>
               <div><span className="text-gray-500">Email: </span><span className="text-gray-900">{selected.tenant_email}</span></div>
               <div><span className="text-gray-500">Phone: </span><span className="text-gray-900">{selected.tenant_phone ?? "Not provided"}</span></div>
               <div><span className="text-gray-500">Property: </span><span className="text-gray-900">{selected.property_address}</span></div>
@@ -315,6 +326,37 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     className="w-full bg-white border border-gray-300 text-gray-600 rounded-lg px-3 py-2 text-sm font-medium hover:border-gray-400 disabled:opacity-50 transition-colors"
                   >
                     {actionLoading === "reopen" ? "Saving..." : "Reopen"}
+                  </button>
+                )}
+              </div>
+
+              {/* Delete */}
+              <div className="mt-2 pt-2 border-t border-gray-100">
+                {confirmDelete ? (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs text-gray-500 text-center">Delete this ticket permanently?</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setConfirmDelete(false)}
+                        className="flex-1 border border-gray-300 text-gray-600 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => deleteTicket(selected.reference_number)}
+                        disabled={actionLoading === "delete"}
+                        className="flex-1 bg-red-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+                      >
+                        {actionLoading === "delete" ? "Deleting..." : "Yes, delete"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="w-full text-xs text-gray-400 hover:text-red-500 transition-colors py-1"
+                  >
+                    🗑 Delete ticket
                   </button>
                 )}
               </div>

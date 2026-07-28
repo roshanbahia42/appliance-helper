@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const {
     tenant_name,
+    tenant_room = "",
     tenant_email,
     tenant_phone,
     property_address,
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
     tenant_name,
     tenant_email,
     tenant_phone: tenant_phone || null,
+    tenant_room: tenant_room || null,
     category: issueDetail,
     description: description || "",
     media_urls,
