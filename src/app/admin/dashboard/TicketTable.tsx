@@ -100,7 +100,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       ``,
       `Tenant: ${ticket.tenant_name}${ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}`,
       ticket.tenant_phone ? `Phone: ${ticket.tenant_phone}` : null,
-      `Email: ${ticket.tenant_email}`,
       (ticket.media_urls?.length ?? 0) > 0
         ? `\nPhotos/videos:\n${ticket.media_urls!.join("\n")}`
         : null,
