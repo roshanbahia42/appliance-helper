@@ -90,15 +90,13 @@ export default function Home() {
       const { data, error: uploadError } = await supabase.storage
         .from("ticket-media")
         .upload(path, file);
-      if (uploadError) {
-        throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
+      if (uploadError || !data) {
+        throw new Error(`Failed to upload ${file.name}: ${uploadError?.message ?? "no response from storage"}`);
       }
-      if (data) {
-        const { data: { publicUrl } } = supabase.storage
-          .from("ticket-media")
-          .getPublicUrl(data.path);
-        urls.push(publicUrl);
-      }
+      const { data: { publicUrl } } = supabase.storage
+        .from("ticket-media")
+        .getPublicUrl(data.path);
+      urls.push(publicUrl);
     }
     setUploadProgress(100);
     return urls;

@@ -22,27 +22,17 @@ export default async function ConfirmationPage({
     <div className="min-h-screen bg-slate-50">
       <header className="bg-[#0f2044] px-6 py-8">
         <div className="max-w-xl mx-auto">
-          <h1 className="text-2xl font-bold text-white">
-            Student Maintenance Hub
-          </h1>
+          <h1 className="text-2xl font-bold text-white">Student Maintenance Hub</h1>
           <p className="text-blue-200 text-sm mt-1">Request received</p>
         </div>
       </header>
 
-      <div className="max-w-xl mx-auto p-6 flex flex-col gap-5">
+      <div className="max-w-xl mx-auto p-6 flex flex-col gap-4">
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <div className="flex items-start gap-3">
             <span className="text-2xl">✅</span>
             <div>
-              <p className="font-semibold text-slate-900">
-                Request submitted successfully
-              </p>
-              <p className="text-slate-500 text-sm mt-0.5">
-                Reference:{" "}
-                <span className="font-mono font-semibold text-slate-700">
-                  {reference}
-                </span>
-              </p>
+              <p className="font-semibold text-slate-900">Request submitted successfully</p>
               <p className="text-slate-500 text-sm mt-0.5">
                 A confirmation has been sent to {ticket.tenant_email}
               </p>
@@ -50,9 +40,33 @@ export default async function ConfirmationPage({
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3 text-sm">
+          <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Your request</h2>
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-500">Reference</span>
+              <span className="font-mono font-semibold text-slate-800">{reference}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-500">Property</span>
+              <span className="text-slate-800 text-right">{ticket.property_address}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-500">Issue</span>
+              <span className="text-slate-800 text-right">{ticket.category}</span>
+            </div>
+            {ticket.description && (
+              <div className="pt-2 border-t border-slate-100">
+                <span className="text-slate-500 block mb-1">Details</span>
+                <p className="text-slate-800 bg-slate-50 rounded-lg p-3 leading-relaxed">{ticket.description}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
           <p className="text-sm text-blue-900 leading-relaxed">
-            Your landlady has been notified and will be in touch to arrange a repair. Keep your reference number handy: <span className="font-mono font-semibold">{reference}</span>
+            Your landlady has been notified and will be in touch to arrange a repair.
           </p>
         </div>
 
