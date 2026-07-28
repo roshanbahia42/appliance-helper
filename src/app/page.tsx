@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
 import { CATEGORIES, type Category, type Subcategory } from "@/lib/categories";
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -76,26 +75,30 @@ export default function Home() {
 
   const uploadFiles = async (): Promise<string[]> => {
     if (files.length === 0) return [];
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const folderId = crypto.randomUUID();
     const urls: string[] = [];
     for (let i = 0; i < files.length; i++) {
       setUploadProgress(Math.round((i / files.length) * 100));
       const file = files[i];
-      const ext = file.name.split(".").pop() ?? "bin";
-      const path = `${folderId}/${i}-${Date.now()}.${ext}`;
-      const { data, error: uploadError } = await supabase.storage
-        .from("ticket-media")
-        .upload(path, file);
-      if (uploadError || !data) {
-        throw new Error(`Failed to upload ${file.name}: ${uploadError?.message ?? "no response from storage"}`);
+
+      const res = await fetch("/api/upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      });
+      const { signedUrl, publicUrl, error } = await res.json();
+      if (!res.ok || !signedUrl) {
+        throw new Error(`Failed to prepare upload for ${file.name}: ${error ?? "unknown error"}`);
       }
-      const { data: { publicUrl } } = supabase.storage
-        .from("ticket-media")
-        .getPublicUrl(data.path);
+
+      const upload = await fetch(signedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!upload.ok) {
+        throw new Error(`Failed to upload ${file.name}`);
+      }
+
       urls.push(publicUrl);
     }
     setUploadProgress(100);
