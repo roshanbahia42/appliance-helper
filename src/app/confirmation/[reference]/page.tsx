@@ -50,16 +50,10 @@ export default async function ConfirmationPage({
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-lg">🔍</span>
-            <h2 className="font-semibold text-slate-900">
-              Before we arrange a visit, please try these steps
-            </h2>
-          </div>
-          <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
-            {ticket.ai_response}
-          </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+          <p className="text-sm text-blue-900 leading-relaxed">
+            Your landlady has been notified and will be in touch to arrange a repair. Keep your reference number handy: <span className="font-mono font-semibold">{reference}</span>
+          </p>
         </div>
 
         <ConfirmationActions
