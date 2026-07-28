@@ -543,7 +543,7 @@ export default function Home() {
 
             <div className="bg-white rounded-xl border border-slate-200 p-5">
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                {requiresDescription ? "Please describe the issue *" : "Anything else to add? (optional)"}
+                {requiresDescription ? "Please describe the issue *" : "Description (optional)"}
               </label>
               <textarea
                 value={form.description}
