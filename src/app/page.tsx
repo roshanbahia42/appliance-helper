@@ -578,9 +578,20 @@ export default function Home() {
                 />
               </div>
               {files.length > 0 && (
-                <p className="text-xs text-slate-500">
-                  {files.length} file{files.length > 1 ? "s" : ""} selected
-                </p>
+                <ul className="flex flex-col gap-1">
+                  {files.map((file, i) => (
+                    <li key={i} className="flex items-center justify-between text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+                      <span className="truncate">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setFiles(files.filter((_, j) => j !== i))}
+                        className="ml-2 text-slate-400 hover:text-slate-600 shrink-0 text-base leading-none"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
 
