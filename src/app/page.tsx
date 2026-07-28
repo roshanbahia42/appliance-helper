@@ -90,7 +90,10 @@ export default function Home() {
       const { data, error: uploadError } = await supabase.storage
         .from("ticket-media")
         .upload(path, file);
-      if (!uploadError && data) {
+      if (uploadError) {
+        throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
+      }
+      if (data) {
         const { data: { publicUrl } } = supabase.storage
           .from("ticket-media")
           .getPublicUrl(data.path);
