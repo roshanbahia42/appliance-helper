@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Ticket = {
   id: string;
@@ -25,8 +26,18 @@ const STATUS_COLORS: Record<string, string> = {
 const FILTERS = ["all", "open", "escalated", "resolved"];
 
 export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
+  const router = useRouter();
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [filter, setFilter] = useState("all");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const updateStatus = async (reference: string, action: "resolved" | "escalate") => {
+    setActionLoading(action);
+    await fetch(`/api/tickets/${reference}/${action}`, { method: "POST" });
+    setActionLoading(null);
+    setSelected(null);
+    router.refresh();
+  };
 
   const filtered =
     filter === "all" ? tickets : tickets.filter((t) => t.status === filter);
@@ -166,6 +177,26 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 {selected.description}
               </p>
             </div>
+            {selected.status !== "resolved" && (
+              <div className="mt-4 flex flex-col gap-2">
+                <button
+                  onClick={() => updateStatus(selected.reference_number, "resolved")}
+                  disabled={!!actionLoading}
+                  className="w-full bg-green-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+                >
+                  {actionLoading === "resolved" ? "Saving..." : "Mark resolved"}
+                </button>
+                {selected.status !== "escalated" && (
+                  <button
+                    onClick={() => updateStatus(selected.reference_number, "escalate")}
+                    disabled={!!actionLoading}
+                    className="w-full bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  >
+                    {actionLoading === "escalate" ? "Saving..." : "Escalate"}
+                  </button>
+                )}
+              </div>
+            )}
             {(selected.media_urls ?? []).length > 0 && (
               <div className="mt-2">
                 <span className="text-gray-500 block mb-2">Attachments:</span>

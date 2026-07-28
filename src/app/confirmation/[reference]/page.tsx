@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import { notFound } from "next/navigation";
-import ConfirmationActions from "./ConfirmationActions";
+import CloseTicketButton from "./CloseTicketButton";
 
 export default async function ConfirmationPage({
   params,
@@ -56,10 +56,7 @@ export default async function ConfirmationPage({
           </p>
         </div>
 
-        <ConfirmationActions
-          reference={reference}
-          currentStatus={ticket.status}
-        />
+        <CloseTicketButton reference={reference} />
       </div>
     </div>
   );
