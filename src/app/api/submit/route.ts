@@ -51,27 +51,61 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to save ticket" }, { status: 500 });
   }
 
-  await resend.emails.send({
-    from: "onboarding@resend.dev",
-    to: tenant_email,
-    subject: `${isEmergency ? "⚠️ Urgent — " : ""}Maintenance Request Received — ${reference}`,
-    html: `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #111;">
-        <h2 style="color: #1d4ed8; margin-bottom: 4px;">Maintenance Request Received</h2>
-        <p>Hi ${tenant_name},</p>
-        <p>We've received your maintenance request and your landlord has been notified.</p>
-        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0; line-height: 1.8;">
-          <p style="margin: 0;"><strong>Reference:</strong> ${reference}</p>
-          <p style="margin: 0;"><strong>Issue:</strong> ${issueDetail}</p>
-          <p style="margin: 0;"><strong>Property:</strong> ${property_address}</p>
-          ${isEmergency ? '<p style="margin: 0; color: #dc2626;"><strong>⚠️ Flagged as urgent</strong></p>' : ""}
+  const emailPromises = [
+    resend.emails.send({
+      from: "onboarding@resend.dev",
+      to: tenant_email,
+      subject: `${isEmergency ? "⚠️ Urgent — " : ""}Maintenance Request Received — ${reference}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #111;">
+          <h2 style="color: #1d4ed8; margin-bottom: 4px;">Maintenance Request Received</h2>
+          <p>Hi ${tenant_name},</p>
+          <p>We've received your maintenance request and your landlord has been notified.</p>
+          <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0; line-height: 1.8;">
+            <p style="margin: 0;"><strong>Reference:</strong> ${reference}</p>
+            <p style="margin: 0;"><strong>Issue:</strong> ${issueDetail}</p>
+            <p style="margin: 0;"><strong>Property:</strong> ${property_address}</p>
+            ${isEmergency ? '<p style="margin: 0; color: #dc2626;"><strong>⚠️ Flagged as urgent</strong></p>' : ""}
+          </div>
+          <p style="color: #6b7280; font-size: 14px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+            Keep your reference number handy: <strong>${reference}</strong>
+          </p>
         </div>
-        <p style="color: #6b7280; font-size: 14px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
-          Keep your reference number handy: <strong>${reference}</strong>
-        </p>
-      </div>
-    `,
-  });
+      `,
+    }),
+  ];
+
+  if (isEmergency && process.env.LANDLORD_EMAIL) {
+    emailPromises.push(
+      resend.emails.send({
+        from: "onboarding@resend.dev",
+        to: process.env.LANDLORD_EMAIL,
+        subject: `⚠️ URGENT maintenance request — ${reference}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #111;">
+            <div style="background: #dc2626; color: white; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 18px;">⚠️ Urgent Maintenance Request</h2>
+              <p style="margin: 4px 0 0; opacity: 0.9; font-size: 14px;">Immediate attention may be required</p>
+            </div>
+            <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; line-height: 1.8;">
+              <p style="margin: 0;"><strong>Reference:</strong> ${reference}</p>
+              <p style="margin: 0;"><strong>Issue:</strong> ${issueDetail}</p>
+              <p style="margin: 0;"><strong>Property:</strong> ${property_address}</p>
+              <p style="margin: 0;"><strong>Tenant:</strong> ${tenant_name}</p>
+              <p style="margin: 0;"><strong>Email:</strong> ${tenant_email}</p>
+              ${tenant_phone ? `<p style="margin: 0;"><strong>Phone:</strong> ${tenant_phone}</p>` : ""}
+            </div>
+            ${description ? `<div style="margin-top: 16px;"><p style="margin: 0 0 6px; font-weight: 600;">Additional details:</p><p style="background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin: 0;">${description}</p></div>` : ""}
+            <p style="color: #6b7280; font-size: 13px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+              View full details in the <a href="https://appliance-helper.vercel.app/admin/dashboard" style="color: #1d4ed8;">admin dashboard</a>.
+            </p>
+          </div>
+        `,
+      })
+    );
+  }
+
+  await Promise.all(emailPromises);
 
   return NextResponse.json({ reference });
 }
