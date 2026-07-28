@@ -56,7 +56,7 @@ export default async function ConfirmationPage({
           </p>
         </div>
 
-        <CloseTicketButton reference={reference} />
+        <CloseTicketButton reference={reference} initialStatus={ticket.status} />
       </div>
     </div>
   );

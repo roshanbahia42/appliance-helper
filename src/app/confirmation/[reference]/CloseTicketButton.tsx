@@ -2,8 +2,16 @@
 
 import { useState } from "react";
 
-export default function CloseTicketButton({ reference }: { reference: string }) {
-  const [state, setState] = useState<"idle" | "loading" | "done">("idle");
+export default function CloseTicketButton({
+  reference,
+  initialStatus,
+}: {
+  reference: string;
+  initialStatus: string;
+}) {
+  const [state, setState] = useState<"idle" | "loading" | "done">(
+    initialStatus === "resolved" ? "done" : "idle"
+  );
 
   if (state === "done") {
     return (
