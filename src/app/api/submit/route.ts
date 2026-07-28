@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { createAdminClient } from "@/utils/supabase/admin";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://appliance-helper-self.vercel.app";
 
 function generateReference() {
   const year = new Date().getFullYear();
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
             ${isEmergency ? '<p style="margin: 0; color: #dc2626;"><strong>⚠️ Flagged as urgent</strong></p>' : ""}
           </div>
           <div style="margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 20px; text-align: center;">
-            <a href="https://appliance-helper.vercel.app/confirmation/${reference}" style="display: inline-block; background: #0f2044; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; margin-bottom: 12px;">View your request →</a>
+            <a href="${APP_URL}/confirmation/${reference}" style="display: inline-block; background: #0f2044; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; margin-bottom: 12px;">View your request →</a>
             <p style="color: #9ca3af; font-size: 12px; margin: 0;">If your issue has since been resolved, you can close this ticket from the link above.</p>
           </div>
         </div>
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
             </div>
             ${description ? `<div style="margin-top: 16px;"><p style="margin: 0 0 6px; font-weight: 600;">Additional details:</p><p style="background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin: 0;">${description}</p></div>` : ""}
             <p style="color: #6b7280; font-size: 13px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
-              View full details in the <a href="https://appliance-helper.vercel.app/admin/dashboard" style="color: #1d4ed8;">admin dashboard</a>.
+              View full details in the <a href="${APP_URL}/admin/dashboard" style="color: #1d4ed8;">admin dashboard</a>.
             </p>
           </div>
         `,
