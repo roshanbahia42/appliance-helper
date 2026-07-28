@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     subcategory,
     description,
     isEmergency = false,
+    media_urls = [],
   } = body;
 
   if (!tenant_name || !tenant_email || !property_address || !category) {
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
     tenant_phone: tenant_phone || null,
     category: issueDetail,
     description: description || "",
+    media_urls,
     status: isEmergency ? "escalated" : "open",
   });
 

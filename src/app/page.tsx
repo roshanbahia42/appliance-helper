@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { createBrowserClient } from "@supabase/ssr";
 import { CATEGORIES, type Category, type Subcategory } from "@/lib/categories";
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -63,12 +64,42 @@ export default function Home() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [form, setForm] = useState<FormState>({ name: "", email: "", phone: "", description: "" });
   const [emailError, setEmailError] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [solved, setSolved] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const uploadFiles = async (): Promise<string[]> => {
+    if (files.length === 0) return [];
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const folderId = crypto.randomUUID();
+    const urls: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      setUploadProgress(Math.round((i / files.length) * 100));
+      const file = files[i];
+      const ext = file.name.split(".").pop() ?? "bin";
+      const path = `${folderId}/${i}-${Date.now()}.${ext}`;
+      const { data, error: uploadError } = await supabase.storage
+        .from("ticket-media")
+        .upload(path, file);
+      if (!uploadError && data) {
+        const { data: { publicUrl } } = supabase.storage
+          .from("ticket-media")
+          .getPublicUrl(data.path);
+        urls.push(publicUrl);
+      }
+    }
+    setUploadProgress(100);
+    return urls;
+  };
 
   const goTo = (s: Step) => setHistory((prev) => [...prev, s]);
   const goBack = () => {
@@ -134,6 +165,9 @@ export default function Home() {
     setLoading(true);
     setError("");
     try {
+      setIsUploading(true);
+      const mediaUrls = await uploadFiles();
+      setIsUploading(false);
       const res = await fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -146,6 +180,7 @@ export default function Home() {
           subcategory: subcategory?.name ?? null,
           description: form.description,
           isEmergency: category!.isEmergency ?? false,
+          media_urls: mediaUrls,
         }),
       });
       const data = await res.json();
@@ -517,6 +552,52 @@ export default function Home() {
               />
             </div>
 
+            <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Photos or videos (optional)
+                </label>
+                <p className="text-xs text-slate-400 mb-2">Up to 5 files, 50MB each</p>
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.files ?? []);
+                    const oversized = selected.filter((f) => f.size > 50 * 1024 * 1024);
+                    if (oversized.length > 0) {
+                      setError(`${oversized.map((f) => f.name).join(", ")} exceeds the 50MB limit`);
+                      e.target.value = "";
+                      return;
+                    }
+                    setError("");
+                    setFiles(selected.slice(0, 5));
+                  }}
+                  className="w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#0f2044] file:text-white hover:file:bg-blue-900 file:cursor-pointer"
+                />
+              </div>
+              {files.length > 0 && (
+                <p className="text-xs text-slate-500">
+                  {files.length} file{files.length > 1 ? "s" : ""} selected
+                </p>
+              )}
+            </div>
+
+            {isUploading && (
+              <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-2">
+                <div className="flex justify-between text-xs text-slate-600">
+                  <span>Uploading files...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-1.5">
+                  <div
+                    className="bg-[#0f2044] h-1.5 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {error && (
               <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-3">
                 {error}
@@ -525,10 +606,10 @@ export default function Home() {
 
             <button
               type="submit"
-              disabled={!isFormValid || loading}
+              disabled={!isFormValid || loading || isUploading}
               className="bg-[#0f2044] text-white rounded-xl px-4 py-3.5 text-sm font-semibold hover:bg-blue-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? "Submitting..." : "Submit Request"}
+              {isUploading ? `Uploading ${uploadProgress}%...` : loading ? "Submitting..." : "Submit Request"}
             </button>
           </form>
         </div>

@@ -12,7 +12,7 @@ type Ticket = {
   category: string;
   description: string;
   status: string;
-  ai_response: string;
+  media_urls: string[] | null;
   created_at: string;
 };
 
@@ -166,12 +166,32 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 {selected.description}
               </p>
             </div>
-            <div className="mt-2">
-              <span className="text-gray-500 block mb-1">AI guide sent:</span>
-              <p className="text-gray-700 bg-gray-50 rounded p-2 text-xs whitespace-pre-wrap max-h-48 overflow-y-auto leading-relaxed">
-                {selected.ai_response}
-              </p>
-            </div>
+            {(selected.media_urls ?? []).length > 0 && (
+              <div className="mt-2">
+                <span className="text-gray-500 block mb-2">Attachments:</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {selected.media_urls!.map((url, i) => {
+                    const isVideo = /\.(mp4|mov|avi|webm|mkv)$/i.test(url);
+                    return isVideo ? (
+                      <video
+                        key={i}
+                        src={url}
+                        controls
+                        className="w-full rounded-lg col-span-2"
+                      />
+                    ) : (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={url}
+                          alt={`Attachment ${i + 1}`}
+                          className="w-full rounded-lg object-cover aspect-square hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
