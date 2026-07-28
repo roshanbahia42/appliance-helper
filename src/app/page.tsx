@@ -423,7 +423,7 @@ export default function Home() {
                   fetchSuggestions(e.target.value);
                 }}
                 onFocus={() => setShowSuggestions(true)}
-                placeholder="e.g. 12 Example Street, London"
+                placeholder=""
                 className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               {selectedProperty && (
@@ -518,7 +518,7 @@ export default function Home() {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
-                    placeholder="e.g. Jamie Smith"
+                    placeholder=""
                     className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -527,7 +527,7 @@ export default function Home() {
                   <input
                     value={form.room_number}
                     onChange={(e) => setForm({ ...form, room_number: e.target.value })}
-                    placeholder="e.g. 3B"
+                    placeholder=""
                     className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -548,7 +548,7 @@ export default function Home() {
                       }
                     }}
                     required
-                    placeholder="you@email.com"
+                    placeholder=""
                     className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       emailError ? "border-red-400" : "border-slate-300"
                     }`}
@@ -563,7 +563,7 @@ export default function Home() {
                     type="tel"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="07700 000000"
+                    placeholder=""
                     className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -579,7 +579,7 @@ export default function Home() {
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 required={requiresDescription}
                 rows={3}
-                placeholder="When did it start, what have you already tried, any error codes or unusual sounds..."
+                placeholder="When did it start, what have you already tried, any unusual sounds..."
                 className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
             </div>
