@@ -213,9 +213,10 @@ Type-check: `npx tsc --noEmit`
 
 Batch these into one conversation rather than asking piecemeal:
 
-1. **Emergency alerts** — text, email, or both when an emergency ticket comes in?
-2. **Appliance manuals** — can she provide PDFs or photos of manuals? Which appliances are at which property?
-3. **Appliance inventory** — full list of appliances per property (needed before manuals feature can be built)
-4. **Her real email address** — to replace the placeholder `LANDLORD_EMAIL` in Vercel
-5. **Sending domain** — does she have a domain or branded email address we can use for Resend? Currently Resend sandbox only sends to verified addresses
-6. **Logo / branding** — PWA icons are a placeholder. Does she have a logo or colour preference?
+1. **Emergency alerts** — text, email, or both when an emergency ticket comes in? (currently: urgent email to landlady on emergency submissions only)
+2. **Non-emergency notifications** — is she happy checking the dashboard for normal tickets, or does she want an email for every submission?
+3. **Appliance manuals** — can she provide PDFs or photos of manuals? Which appliances are at which property?
+4. **Appliance inventory** — full list of appliances per property (needed before manuals feature can be built)
+5. **Her real email address** — to replace the placeholder `LANDLORD_EMAIL` in Vercel
+6. **Sending domain** — does she have a domain or branded email address we can use for Resend? Currently Resend sandbox only sends to verified addresses
+7. **Logo / branding** — PWA icons are a placeholder. Does she have a logo or colour preference?
