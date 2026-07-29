@@ -57,7 +57,8 @@ function isStale(ticket: { created_at: string; status: string }) {
 
 type BulkAction = "delete" | "purge" | "resolve" | "reopen" | "restore";
 
-// Everything that asks before it acts. Restore is absent — it's harmless.
+// Every bulk action confirms first. Even restore: an accidental one scatters
+// tickets back among hundreds of others with no easy way to find them again.
 const BULK_CONFIRM: Record<
   string,
   { prompt: (n: number) => string; label: string; loading: string; className: string }
@@ -85,6 +86,12 @@ const BULK_CONFIRM: Record<
     prompt: (n) => `Reopen ${n} ${n === 1 ? "ticket" : "tickets"}?`,
     label: "Yes, reopen",
     loading: "Reopening...",
+    className: "bg-blue-600 hover:bg-blue-700",
+  },
+  restore: {
+    prompt: (n) => `Restore ${n} ${n === 1 ? "ticket" : "tickets"} from the bin?`,
+    label: "Yes, restore",
+    loading: "Restoring...",
     className: "bg-blue-600 hover:bg-blue-700",
   },
 };
@@ -660,11 +667,10 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                   {inBin ? (
                     <>
                       <button
-                        onClick={() => bulkAction("restore")}
-                        disabled={!!bulkLoading}
-                        className="flex-1 sm:flex-none border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                        onClick={() => setConfirmBulk("restore")}
+                        className="flex-1 sm:flex-none border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
                       >
-                        {bulkLoading === "restore" ? "Restoring..." : "Restore"}
+                        Restore
                       </button>
                       <button
                         onClick={() => setConfirmBulk("purge")}
@@ -834,6 +840,9 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                   <div className="flex justify-between items-start gap-2 mb-1">
                     <span className="font-medium text-gray-900 text-sm">
                       {ticket.tenant_name}{ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}
+                      {ticket.admin_notes && (
+                        <span className="ml-1 text-xs" title="Has notes">📝</span>
+                      )}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize shrink-0 ${STATUS_COLORS[ticket.status] ?? "bg-gray-100 text-gray-600"}`}>
                       {ticket.status}
@@ -852,9 +861,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     >
                       {formatAge(ticket.created_at)}
                     </span>
-                    {ticket.admin_notes && (
-                      <span className="text-xs text-gray-400" title="Has notes">📝</span>
-                    )}
                   </div>
                 </button>
               </div>
