@@ -1,6 +1,6 @@
 # Student Maintenance Hub
 
-A Next.js PWA for student tenants to report maintenance issues to their landlady. Designed for ~80 student tenants across multiple managed properties.
+A Next.js PWA for student tenants to report maintenance issues to their landlady. Designed for ~80 student tenants across multiple managed properties in Birmingham.
 
 **Live URL:** https://appliance-helper-self.vercel.app  
 **Auto-deploys from:** `main` branch on GitHub (`roshanbahia42/appliance-helper`)  
@@ -12,11 +12,11 @@ A Next.js PWA for student tenants to report maintenance issues to their landlady
 
 | Layer | Service |
 |---|---|
-| Framework | Next.js (App Router) |
+| Framework | Next.js (App Router) with Geist font |
 | Database | Supabase (`tickets` table) |
 | File storage | Supabase Storage (`ticket-media` bucket, public) |
 | Email | Resend (`onboarding@resend.dev` — **sandbox**, see below) |
-| Address lookup | Google Places API (New) — server-side proxy, key never sent to browser |
+| Address lookup | Google Places API (New) — server-side proxy, restricted to Birmingham (15km radius) |
 | Styling | Tailwind CSS v4 |
 | Auth | Supabase Auth (admin only) |
 | Hosting | Vercel (`appliance-helper-self.vercel.app`) |
@@ -44,12 +44,13 @@ NEXT_PUBLIC_APP_URL=https://appliance-helper-self.vercel.app
 ```
 src/
   app/
-    page.tsx                              # entire multi-step form (state machine, all 5 steps)
+    layout.tsx                            # root layout — Geist font, PWA meta tags
+    page.tsx                              # entire multi-step student form (state machine)
     globals.css                           # Tailwind base + global button cursor
-    manifest.ts                           # PWA manifest
+    manifest.ts                           # student PWA manifest (start_url: "/")
     api/
       submit/route.ts                     # POST: saves ticket to DB, sends emails
-      places/route.ts                     # GET: Google Places autocomplete proxy
+      places/route.ts                     # GET: Google Places autocomplete proxy (Birmingham only)
       upload-url/route.ts                 # POST: generates signed Supabase upload URL (bypasses RLS)
       tickets/[reference]/
         resolved/route.ts                 # POST: marks resolved, deletes media from storage
@@ -60,19 +61,22 @@ src/
       page.tsx                            # confirmation page (server component)
       CloseTicketButton.tsx               # client component — subtle self-resolve link
     admin/
+      layout.tsx                          # admin layout — links to admin PWA manifest
       login/page.tsx                      # landlady login (Supabase Auth)
       dashboard/
         page.tsx                          # auth-gated dashboard (server component)
         DashboardHeader.tsx               # header with ticket count + logout
-        TicketTable.tsx                   # filterable ticket list + detail side panel
+        TicketTable.tsx                   # filterable ticket list, mobile-first
   lib/
     categories.ts                         # source of truth: all categories, subcategories, tips
+                                          # also contains CONTACTS object with landlady/landlord phone numbers
   utils/
     supabase/
       admin.ts                            # service-role client (server only)
       server.ts                           # session-aware client (server)
       client.ts                           # browser client
 public/
+  admin-manifest.webmanifest              # admin PWA manifest (start_url: "/admin/login", scope: "/admin/")
   icon-192.png                            # PWA icon (placeholder — swap for real logo)
   icon-512.png                            # PWA icon (placeholder)
 ```
@@ -88,14 +92,14 @@ public/
 | id | uuid (PK) | |
 | reference_number | text | |
 | tenant_name | text | |
-| tenant_room | text (nullable) | Room number if applicable |
+| tenant_room | text | Room number — required at submission |
 | tenant_email | text | |
-| tenant_phone | text (nullable) | |
+| tenant_phone | text | Required at submission |
 | property_address | text | |
 | category | text | |
-| description | text | |
+| description | text | Required at submission |
 | status | text | `open` / `escalated` / `resolved` |
-| media_urls | text[] (nullable) | Public Supabase Storage URLs |
+| media_urls | text[] (nullable) | Public Supabase Storage URLs — min 1 required at submission |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
@@ -114,38 +118,42 @@ ALTER TABLE tickets ADD COLUMN tenant_room text;
 
 ---
 
-## User Flow
+## User Flow (Student)
 
 ```
-Step 1 — Category grid (11 categories, logo links home)
+Step 1 — Category grid (tap to select)
   └─ has subcategories?
-       ├─ Yes → Step 2 — Subcategory list
-       │           └─ Step 3 — Troubleshooting tips
+       ├─ Yes, non-emergency → Step 2 — Subcategory
+       │     └─ Step 3 — Property (progress bar: 3)
+       │           └─ Step 4 — Troubleshooting tips + YouTube suggestion (progress bar: 4)
        │                 ├─ "Problem solved!" → success screen (no ticket created)
-       │                 └─ "I still need help →" → Step 4
-       └─ No (Other / Not Sure) → Step 4 directly
+       │                 └─ "I still need help →" → Step 5
+       ├─ Yes, emergency/urgent → Step 2 — Subcategory
+       │     └─ Step 3 — Tips with emergency steps + contact numbers (progress bar: 3)
+       │           └─ Step 4 — Property (progress bar: 4)
+       │                 └─ Step 5
+       └─ No subcategories (Other / Not Sure) → Step 3 — Property → Step 5
 
-Step 4 — Property address (Google Places autocomplete, UK addresses)
-Step 5 — Tenant details: name, room number (optional), email, phone (optional),
-          description, photos/videos (up to 5, 50MB each)
+Step 5 — Tenant details (all fields required):
+  Full Name*, Room No.*, Email*, Phone*, Description*, Photos or videos* (min 1)
   └─ Submit → POST /api/submit → redirect to /confirmation/[reference]
 ```
 
-- Emergency categories skip step 3 and save as `escalated` immediately + email landlady
-- "Other / Not Sure" skips steps 2 and 3; description becomes required
-- All step headers have a house logo icon linking back to `/`
+- Emergency categories submit as `escalated` and immediately email the landlady
+- Non-emergency tickets submit as `open` — landlady checks dashboard
+- Progress bar correctly reflects visual order for both emergency and non-emergency flows
+- Address search restricted to Birmingham via Google Places `locationRestriction`
 
 ---
 
 ## Confirmation Page (`/confirmation/[reference]`)
 
 Shows:
-- ✅ Success banner with reference number and email confirmation
+- Success banner with reference number and email confirmation
 - Ticket summary: reference, property + room, issue category, description
 - Uploaded attachments (images inline, HEIC/video as download link)
 - "Your landlady has been notified" message
 - Subtle "Issue since been resolved? Close this ticket" link
-- "View your request →" button also in the confirmation email
 
 ---
 
@@ -154,7 +162,7 @@ Shows:
 | Status | Meaning | How it's set |
 |---|---|---|
 | `open` | Submitted, awaiting attention | Default on submission |
-| `escalated` | Priority — needs urgent attention | Emergency at submission; admin escalates from dashboard |
+| `escalated` | Priority — needs urgent attention | Emergency at submission; admin can escalate |
 | `resolved` | Fixed / closed | Admin or tenant marks resolved |
 
 When marked **resolved** or **deleted**, media files are automatically removed from Supabase Storage.
@@ -165,16 +173,28 @@ When marked **resolved** or **deleted**, media files are automatically removed f
 
 To create admin credentials: Supabase → Authentication → Users → Add user.
 
+**Mobile-first layout** — designed for phone use:
+- On mobile: tickets show as tappable cards → tapping opens a full-screen detail panel
+- On desktop: traditional table + side panel layout
+
 Features:
 - **Status tabs**: All / Open / Escalated / Resolved
 - **Filters**: tenant name search, property dropdown, category dropdown, date range (7d / 30d / all)
-- Click any row → detail side panel with:
+- Detail panel includes:
   - Tenant name, room, email, phone, property, category, description
   - **Mark resolved** / **Escalate** / **Reopen** status buttons
   - **Delete ticket** (with confirmation) — removes ticket + storage files
-  - **Copy details** — clipboard-formatted text for handyman (no email included)
-  - **WhatsApp** — opens WhatsApp with details pre-filled for forwarding to handyman
+  - **Copy details** — clipboard-formatted text for handyman (property + room, issue, details, tenant name + phone — no email)
+  - **WhatsApp** — opens WhatsApp with details pre-filled
   - **Attachments** — images open in full-screen lightbox; HEIC/unsupported shows download button
+
+### Admin PWA
+
+The landlady can install the admin dashboard as a home screen app:
+1. Go to `https://appliance-helper-self.vercel.app/admin/login` in Safari
+2. Share → Add to Home Screen
+
+The admin pages use a separate manifest (`/admin-manifest.webmanifest`) with `start_url: "/admin/login"` so the app opens correctly every time.
 
 ---
 
@@ -203,10 +223,12 @@ No storage RLS policies needed. Progress bar tracks per-file upload progress.
 
 ## Categories
 
-All 11 categories, subcategories, and troubleshooting tips live in `src/lib/categories.ts`. To add or edit:
+All categories, subcategories, and troubleshooting tips live in `src/lib/categories.ts`. To add or edit:
 1. Find the category by `id`
 2. Edit `subcategories[]` — each entry has `id`, `name`, `description`, `tips[]`, optionally `isUrgent: true`
 3. Commit and push — Vercel auto-deploys
+
+Emergency contact numbers (landlady + landlord 2) are in the `CONTACTS` object at the top of the file. Update there if numbers change — they're referenced in all emergency tips automatically.
 
 Categories with no subcategories skip steps 2 and 3.
 
@@ -238,13 +260,14 @@ Type-check: `npx tsc --noEmit`
 
 ## Pending / To Do
 
-1. **Resend real domain** — sandbox only delivers to verified addresses. Set up a real sending domain in Resend and update `from` in `api/submit/route.ts`.
-2. **Replace `LANDLORD_EMAIL`** — change in Vercel env vars to landlady's real address.
-3. **Rotate API keys** — all keys should be rotated before go-live (previously exposed in a dev session).
-4. **Appliance manuals** — landlady wants property/appliance-specific manuals on the confirmation page and in the email. Needs: appliance inventory per property, DB lookup table (property + category → manual URL), admin upload interface.
-5. **PWA icons** — placeholder icons in `public/`. Replace with real logo when available; also update `LogoLink` SVG in `page.tsx`.
-6. **Admin notes** — no way to add internal notes to a ticket.
-7. **Remove placeholder examples from form inputs** — "e.g. Jamie Smith" etc. on name/room fields are unnecessary; strip before go-live.
+1. **Category streamlining** — landlady to confirm which categories/subcategories are relevant to her properties. Agreed to do in one batch.
+2. **Appliance manuals** — property-specific manuals to appear on the troubleshooting tips screen (property is now collected before tips, so the architecture is ready). Needs: appliance inventory per property, DB lookup table (property + category → manual URL), admin upload interface.
+3. **Resend real domain** — sandbox only delivers to verified addresses. Set up a real sending domain in Resend and update `from` in `api/submit/route.ts`.
+4. **Replace `LANDLORD_EMAIL`** — change in Vercel env vars to landlady's real address.
+5. **Rotate API keys** — all keys should be rotated before go-live (previously exposed in a dev session).
+6. **PWA icons** — placeholder icons in `public/`. Replace with real logo when available; update both `icon-192.png` and `icon-512.png`.
+7. **App name / branding** — "Student Maintenance Hub" is provisional. Decide on final name, logo, and category icons before launch.
+8. **Admin notes** — no way to add internal notes to a ticket.
 
 ---
 
@@ -253,9 +276,9 @@ Type-check: `npx tsc --noEmit`
 Batch into one conversation:
 
 1. **Emergency alerts** — email is sent now; does she also want a text (SMS via Twilio)?
-2. **Non-emergency notifications** — happy checking the dashboard, or wants an email on every submission?
-3. **Appliance manuals** — can she provide PDFs/photos? Which appliances at which properties?
-4. **Appliance inventory** — full list per property (needed to build the manuals feature)
-5. **Her real email address** — to replace `LANDLORD_EMAIL` in Vercel
-6. **Sending domain** — does she have a domain for Resend to send from?
-7. **Logo / branding** — real logo to replace the placeholder house icon and PWA icons
+2. **Appliance manuals** — can she provide PDFs/photos? Which appliances at which properties?
+3. **Appliance inventory** — full list per property (needed to build the manuals feature)
+4. **Her real email address** — to replace `LANDLORD_EMAIL` in Vercel
+5. **Sending domain** — does she have a domain for Resend to send from?
+6. **Logo / branding** — real logo to replace the placeholder house icon and PWA icons
+7. **App name** — final name for the app and admin portal
