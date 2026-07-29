@@ -163,6 +163,7 @@ export default function Home() {
 
   const isFormValid =
     form.name &&
+    form.room_number &&
     form.email &&
     validateEmail(form.email) &&
     form.phone &&
@@ -520,6 +521,7 @@ export default function Home() {
               )}
             </div>
 
+            <p className="text-xs text-slate-400">* required fields</p>
             <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">About You</h2>
               <div className="flex gap-3">
@@ -534,11 +536,12 @@ export default function Home() {
                   />
                 </div>
                 <div className="w-28">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Room no.</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Room no. *</label>
                   <input
                     value={form.room_number}
                     onChange={(e) => setForm({ ...form, room_number: e.target.value })}
                     placeholder=""
+                    required
                     className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
