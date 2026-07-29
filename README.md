@@ -244,7 +244,8 @@ To create admin credentials: Supabase → Authentication → Users → Add user.
 Features:
 - **Status tabs**: All / Open / Escalated / Resolved
 - **Search**: matches reference, tenant name, room, address, category,
-  description and private notes
+  description, private notes, and the report date — "July", "Jul", "29/07",
+  "29 July" and "2026" all work
 - **Filters**: property dropdown, category dropdown, date
   (last 7d / last 30d / older than 6 months / older than 1 year / all)
 - **Sort**: click a desktop column header to sort by tenant, property, status or
