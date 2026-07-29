@@ -108,6 +108,7 @@ const SORT_OPTIONS = [
   { label: "Tenant A–Z", value: "tenant-asc" },
   { label: "Property A–Z", value: "property-asc" },
   { label: "Status", value: "status-asc" },
+  { label: "Not sent first", value: "sent-asc" },
 ];
 
 const SORT_VALUES: Record<string, (t: Ticket) => string | number> = {
@@ -115,6 +116,7 @@ const SORT_VALUES: Record<string, (t: Ticket) => string | number> = {
   tenant: (t) => t.tenant_name.toLowerCase(),
   property: (t) => t.property_address.toLowerCase(),
   status: (t) => t.status,
+  sent: (t) => (t.sent_to_handyman_at ? 1 : 0),
 };
 
 // "recent-N" keeps tickets from the last N days; "older-N" keeps ones from before
@@ -146,6 +148,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [filterProperty, setFilterProperty] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [search, setSearch] = useState("");
+  const [filterSent, setFilterSent] = useState("all");
   const [sort, setSort] = useState("created-desc");
 
   const uniqueProperties = [...new Set(tickets.map((t) => t.property_address))].sort();
@@ -159,6 +162,8 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       if (!inBin && filterStatus !== "all" && t.status !== filterStatus) return false;
       if (filterProperty !== "all" && t.property_address !== filterProperty) return false;
       if (filterCategory !== "all" && t.category !== filterCategory) return false;
+      if (filterSent === "sent" && !t.sent_to_handyman_at) return false;
+      if (filterSent === "unsent" && t.sent_to_handyman_at) return false;
       if (search) {
         const created = new Date(t.created_at);
         const haystack = [
@@ -204,13 +209,15 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
 
   const hasActiveFilters =
     filterStatus !== "all" || filterDate !== "all" || filterProperty !== "all" ||
-    filterCategory !== "all" || search !== "" || sort !== "created-desc";
+    filterCategory !== "all" || filterSent !== "all" || search !== "" ||
+    sort !== "created-desc";
 
   const clearFilters = () => {
     setFilterStatus("all");
     setFilterDate("all");
     setFilterProperty("all");
     setFilterCategory("all");
+    setFilterSent("all");
     setSearch("");
     setSort("created-desc");
   };
@@ -809,6 +816,15 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
+            <select
+              value={filterSent}
+              onChange={(e) => setFilterSent(e.target.value)}
+              className="w-full md:w-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Sent &amp; not sent</option>
+              <option value="unsent">Not sent yet</option>
+              <option value="sent">Already sent</option>
+            </select>
             {/* Desktop sorts via the column headers, so this is mobile-only. */}
             <select
               value={sort}
@@ -914,7 +930,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                   >
                     Status{sortIndicator("status")}
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Sent</th>
+                  <th
+                    onClick={() => toggleSort("sent")}
+                    className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer select-none hover:text-gray-900"
+                  >
+                    Sent{sortIndicator("sent")}
+                  </th>
                   <th
                     onClick={() => toggleSort("created")}
                     className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer select-none hover:text-gray-900"
