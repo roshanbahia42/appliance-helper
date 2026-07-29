@@ -508,7 +508,7 @@ export default function Home() {
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">About You</h2>
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Full name *</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Full Name*</label>
                   <input
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -518,7 +518,7 @@ export default function Home() {
                   />
                 </div>
                 <div className="w-28">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Room no. *</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Room No.*</label>
                   <input
                     value={form.room_number}
                     onChange={(e) => setForm({ ...form, room_number: e.target.value })}
@@ -530,7 +530,7 @@ export default function Home() {
               </div>
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email*</label>
                   <input
                     type="text"
                     value={form.email}
@@ -554,7 +554,7 @@ export default function Home() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Phone*</label>
                   <input
                     type="tel"
                     value={form.phone}
@@ -568,7 +568,7 @@ export default function Home() {
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Description *</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Description*</label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -582,7 +582,7 @@ export default function Home() {
             <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Photos or videos *
+                  Photos or videos*
                 </label>
                 <p className="text-xs text-slate-400 mb-2">Up to 5 files, 50MB each</p>
                 <input
