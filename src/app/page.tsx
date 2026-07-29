@@ -458,6 +458,7 @@ export default function Home() {
                     No suggestions found — try a different format, e.g. house number then street name.
                   </p>
                 )}
+            </div>
             <p className="text-xs text-slate-400">Start typing your full address and select it from the suggestions.</p>
           </div>
           <button
