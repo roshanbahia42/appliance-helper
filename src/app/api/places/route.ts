@@ -20,8 +20,13 @@ export async function GET(request: NextRequest) {
     },
     body: JSON.stringify({
       input,
-      includedRegionCodes: ["gb"],
       includedPrimaryTypes: ["street_address", "premise", "subpremise"],
+      locationRestriction: {
+        circle: {
+          center: { latitude: 52.4862, longitude: -1.8904 },
+          radius: 15000,
+        },
+      },
     }),
   });
 
