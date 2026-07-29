@@ -14,6 +14,13 @@ export type Category = {
   subcategories: Subcategory[];
 };
 
+const CONTACTS = {
+  landlady: "07973 834611",
+  landlord2: "07790 498859",
+};
+
+const contactLine = `Call ${CONTACTS.landlady} (landlady) or ${CONTACTS.landlord2} (landlord)`;
+
 export const CATEGORIES: Category[] = [
   {
     id: "emergency",
@@ -30,7 +37,7 @@ export const CATEGORIES: Category[] = [
           "EVACUATE THE PROPERTY IMMEDIATELY",
           "Call emergency services (999) once you are safely outside",
           "Do NOT attempt to put out the fire yourself",
-          "Once safe, contact the property manager immediately",
+          `Once safe, ${contactLine}`,
           "Do not re-enter the property until emergency services declare it safe",
         ],
       },
@@ -44,7 +51,7 @@ export const CATEGORIES: Category[] = [
           "Do NOT turn any lights on or off",
           "Once outside, call the National Grid Gas Emergency Service: 0800 111 999",
           "Open windows and doors if safe to do so before leaving",
-          "Contact the property manager after calling emergency services",
+          `After calling emergency services, ${contactLine}`,
         ],
       },
       {
@@ -57,7 +64,7 @@ export const CATEGORIES: Category[] = [
           "Turn off electricity at the mains if water is near electrical outlets or appliances",
           "Move valuables and electronics away from the water",
           "Use towels, buckets, or mops to contain the water if possible",
-          "Contact the property manager immediately — this is an emergency",
+          `${contactLine} — this is an emergency`,
           "Take photos of the damage for insurance purposes if safe to do so",
         ],
       },
@@ -70,7 +77,7 @@ export const CATEGORIES: Category[] = [
           "Check the thermostat settings and try resetting the boiler",
           "Check for tripped circuit breakers in the fuse box",
           "Use safe portable heaters if available, but never leave them unattended",
-          "Contact the property manager immediately — heating failure in extreme cold is an emergency",
+          `${contactLine} — heating failure in extreme cold is an emergency`,
           "Keep internal doors closed to conserve heat in occupied rooms",
           "Let taps drip slightly to prevent pipes from freezing",
         ],
