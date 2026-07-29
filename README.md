@@ -108,41 +108,43 @@ public/
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
-If `tenant_room` column is missing, run:
-```sql
-ALTER TABLE tickets ADD COLUMN tenant_room text;
-```
+### Full schema setup
 
-### `job_batches` table
-
-Stores handyman job sheets. Required for the batch send feature:
+Safe to run repeatedly — everything is `IF NOT EXISTS`, so a partially-migrated
+database is fine. (A plain `CREATE TABLE` on an existing table errors and
+silently skips every statement after it, which is easy to miss.)
 
 ```sql
-CREATE TABLE job_batches (
+CREATE TABLE IF NOT EXISTS job_batches (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   token text UNIQUE NOT NULL,
   reference_numbers text[] NOT NULL,
   created_at timestamptz DEFAULT now()
 );
 
-ALTER TABLE tickets ADD COLUMN sent_to_handyman_at timestamptz;
-ALTER TABLE tickets ADD COLUMN deleted_at timestamptz;
-```
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS tenant_room text;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sent_to_handyman_at timestamptz;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 
-### Row Level Security
-
-The anon key is public (it ships in the browser bundle), so every table must have
-RLS enabled or anyone can read and write the database directly. All app queries
-run server-side with the service role key, which bypasses RLS — so no policies
-are needed:
-
-```sql
 ALTER TABLE tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_batches ENABLE ROW LEVEL SECURITY;
+```
+
+If a `properties` table exists, enable RLS on it too:
+
+```sql
 ALTER TABLE properties ENABLE ROW LEVEL SECURITY;
 ```
 
-Zero policies = the anon key can do nothing, the server keeps full access.
+### Why RLS with no policies
+
+The anon key is public — it ships in the browser bundle — so without RLS anyone
+can read and write the database directly using it. Every app query runs
+server-side with the service role key, which bypasses RLS entirely, so enabling
+RLS with **zero policies** locks out the anon key while the server keeps full
+access. The browser only uses Supabase for `signInWithPassword` and `signOut`,
+which hit the auth API rather than any table, so nothing breaks.
+
 If a browser-side table query is ever added it will silently return nothing
 until a policy is written for it.
 
