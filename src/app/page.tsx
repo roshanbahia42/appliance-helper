@@ -410,9 +410,7 @@ export default function Home() {
           <BackButton onClick={goBack} />
           <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">
             <div className="relative">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Start typing your address *
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Address *</label>
               <input
                 type="text"
                 value={selectedProperty || propertySearch}
@@ -461,9 +459,6 @@ export default function Home() {
                   </p>
                 )}
             </div>
-            <p className="text-xs text-slate-400">
-              Start typing your full address and select it from the suggestions.
-            </p>
           </div>
           <button
             onClick={() => goTo(history[history.length - 2] === 2 ? 3 : 5)}
