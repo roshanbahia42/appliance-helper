@@ -40,15 +40,6 @@ function BackButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function LogoLink() {
-  return (
-    <a href="/" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 transition-colors mb-3" title="Home">
-      <svg width="16" height="15" viewBox="0 0 16 15" fill="white" fillOpacity="0.7">
-        <path d="M8 0L0 7h2v8h5v-5h2v5h5V7h2L8 0z"/>
-      </svg>
-    </a>
-  );
-}
 
 function UrgentBadge({ label }: { label: string }) {
   return (
@@ -250,8 +241,9 @@ export default function Home() {
       <div className="min-h-screen bg-slate-50">
         <header className="bg-[#0f2044] px-6 py-8">
           <div className="max-w-xl mx-auto">
-            <LogoLink />
-            <h1 className="text-2xl font-bold text-white">Student Maintenance Hub</h1>
+            <a href="/" className="block hover:opacity-80 transition-opacity">
+              <h1 className="text-2xl font-bold text-white">Student Maintenance Hub</h1>
+            </a>
             <p className="text-blue-200 text-sm mt-1">Select the type of issue to get started</p>
           </div>
         </header>
@@ -265,7 +257,7 @@ export default function Home() {
                 <button
                   key={cat.id}
                   onClick={() => selectCategory(cat)}
-                  className={`flex items-center justify-center p-4 rounded-xl border text-center transition-all min-h-[72px] ${
+                  className={`flex items-center justify-center p-4 rounded-xl border text-center transition-all h-20 ${
                     cat.isEmergency
                       ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-400"
                       : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#0f2044] hover:bg-blue-50 hover:text-[#0f2044]"
@@ -287,7 +279,6 @@ export default function Home() {
       <div className="min-h-screen bg-slate-50">
         <header className="bg-[#0f2044] px-6 pt-6 pb-5">
           <div className="max-w-xl mx-auto">
-            <LogoLink />
             {category.isEmergency && <UrgentBadge label="Emergency" />}
             <h1 className="text-xl font-bold text-white">{category.name}</h1>
             <p className="text-white/70 text-sm mt-0.5">Select the specific issue</p>
@@ -332,7 +323,6 @@ export default function Home() {
       <div className="min-h-screen bg-slate-50">
         <header className="bg-[#0f2044] px-6 pt-6 pb-5">
           <div className="max-w-xl mx-auto">
-            <LogoLink />
             {isUrgent && <UrgentBadge label={category.isEmergency ? "Emergency" : "Urgent"} />}
             <h1 className="text-xl font-bold text-white">{subcategory.name}</h1>
             <p className="text-white/70 text-sm mt-0.5">
@@ -413,7 +403,6 @@ export default function Home() {
       <div className="min-h-screen bg-slate-50">
         <header className="bg-[#0f2044] px-6 pt-6 pb-5">
           <div className="max-w-xl mx-auto">
-            <LogoLink />
             <h1 className="text-xl font-bold text-white">Which property?</h1>
             <p className="text-blue-200 text-sm mt-0.5">Select your property address</p>
             <ProgressBar step={4} />
@@ -496,7 +485,6 @@ export default function Home() {
       <div className="min-h-screen bg-slate-50">
         <header className="bg-[#0f2044] px-6 pt-6 pb-5">
           <div className="max-w-xl mx-auto">
-            <LogoLink />
             <h1 className="text-xl font-bold text-white">Your Details</h1>
             <p className="text-blue-200 text-sm mt-0.5">Almost done — just a few more details</p>
             <ProgressBar step={5} />
