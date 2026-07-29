@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { deleteTicketMedia } from "@/lib/storage";
 
 export async function POST(
   _request: NextRequest,
@@ -9,18 +8,14 @@ export async function POST(
   const { reference } = await params;
   const supabase = createAdminClient();
 
-  const { data: ticket } = await supabase
+  const { error } = await supabase
     .from("tickets")
-    .select("media_urls")
-    .eq("reference_number", reference)
-    .single();
-
-  if (ticket) await deleteTicketMedia(supabase, [ticket]);
-
-  await supabase
-    .from("tickets")
-    .update({ status: "resolved", updated_at: new Date().toISOString() })
+    .update({ deleted_at: null })
     .eq("reference_number", reference);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ success: true });
 }

@@ -18,7 +18,10 @@ export async function POST(request: NextRequest) {
 
   if (batchError) {
     console.error("Job batch error:", JSON.stringify(batchError));
-    return NextResponse.json({ error: "Failed to create job sheet" }, { status: 500 });
+    return NextResponse.json(
+      { error: `Failed to create job sheet: ${batchError.message}` },
+      { status: 500 }
+    );
   }
 
   await supabase

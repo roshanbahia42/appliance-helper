@@ -17,7 +17,17 @@ type Ticket = {
   media_urls: string[] | null;
   created_at: string;
   sent_to_handyman_at: string | null;
+  deleted_at: string | null;
 };
+
+const BIN_RETENTION_DAYS = 30;
+
+function daysLeftInBin(deletedAt: string) {
+  const expires = new Date(deletedAt);
+  expires.setDate(expires.getDate() + BIN_RETENTION_DAYS);
+  const days = Math.ceil((expires.getTime() - Date.now()) / 86_400_000);
+  return Math.max(0, days);
+}
 
 const STATUS_COLORS: Record<string, string> = {
   open: "bg-yellow-100 text-yellow-800",
@@ -50,8 +60,11 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const uniqueProperties = [...new Set(tickets.map((t) => t.property_address))].sort();
   const uniqueCategories = [...new Set(tickets.map((t) => t.category))].sort();
 
+  const inBin = filterStatus === "bin";
+
   const filtered = tickets.filter((t) => {
-    if (filterStatus !== "all" && t.status !== filterStatus) return false;
+    if (inBin !== !!t.deleted_at) return false;
+    if (!inBin && filterStatus !== "all" && t.status !== filterStatus) return false;
     if (filterProperty !== "all" && t.property_address !== filterProperty) return false;
     if (filterCategory !== "all" && t.category !== filterCategory) return false;
     if (searchTenant && !t.tenant_name.toLowerCase().includes(searchTenant.toLowerCase())) return false;
@@ -76,9 +89,9 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     setSearchTenant("");
   };
 
-  const deleteTicket = async (reference: string) => {
-    setActionLoading("delete");
-    await fetch(`/api/tickets/${reference}/delete`, { method: "POST" });
+  const binTicket = async (reference: string, action: "delete" | "purge" | "restore") => {
+    setActionLoading(action);
+    await fetch(`/api/tickets/${reference}/${action}`, { method: "POST" });
     setActionLoading(null);
     setSelected(null);
     setConfirmDelete(false);
@@ -98,9 +111,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       `Property: ${ticket.property_address}${ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}`,
       `Issue: ${ticket.category}`,
       ticket.description ? `Details: ${ticket.description}` : null,
-      ``,
-      `Tenant: ${ticket.tenant_name}`,
-      ticket.tenant_phone ? `Phone: ${ticket.tenant_phone}` : null,
       (ticket.media_urls?.length ?? 0) > 0
         ? `\nPhotos/videos:\n${ticket.media_urls!.join("\n")}`
         : null,
@@ -202,7 +212,32 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
         <p className="text-gray-900 bg-gray-50 rounded p-2">{ticket.description}</p>
       </div>
 
-      <div className="mt-4 flex flex-col gap-2">
+      {ticket.deleted_at && (
+        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <p className="text-xs text-amber-900">
+            In the bin — deleted permanently in {daysLeftInBin(ticket.deleted_at)}{" "}
+            {daysLeftInBin(ticket.deleted_at) === 1 ? "day" : "days"}.
+          </p>
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => binTicket(ticket.reference_number, "restore")}
+              disabled={!!actionLoading}
+              className="flex-1 bg-white border border-amber-300 text-amber-900 rounded-lg px-3 py-2 text-xs font-medium hover:bg-amber-100 disabled:opacity-50"
+            >
+              {actionLoading === "restore" ? "Restoring..." : "Restore"}
+            </button>
+            <button
+              onClick={() => binTicket(ticket.reference_number, "purge")}
+              disabled={!!actionLoading}
+              className="flex-1 bg-red-600 text-white rounded-lg px-3 py-2 text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+            >
+              {actionLoading === "purge" ? "Deleting..." : "Delete now"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className={`mt-4 flex-col gap-2 ${ticket.deleted_at ? "hidden" : "flex"}`}>
         {ticket.status !== "resolved" && (
           <button
             onClick={() => updateStatus(ticket.reference_number, "resolved")}
@@ -232,37 +267,41 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
         )}
       </div>
 
-      <div className="mt-2 pt-2 border-t border-gray-100">
-        {confirmDelete ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-xs text-gray-500 text-center">Delete this ticket permanently?</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="flex-1 border border-gray-300 text-gray-600 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => deleteTicket(ticket.reference_number)}
-                disabled={actionLoading === "delete"}
-                className="flex-1 bg-red-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-red-700 disabled:opacity-50"
-              >
-                {actionLoading === "delete" ? "Deleting..." : "Yes, delete"}
-              </button>
+      {!ticket.deleted_at && (
+        <div className="mt-2 pt-2 border-t border-gray-100">
+          {confirmDelete ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-gray-500 text-center">
+                Move to bin? It will be deleted after {BIN_RETENTION_DAYS} days.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="flex-1 border border-gray-300 text-gray-600 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => binTicket(ticket.reference_number, "delete")}
+                  disabled={actionLoading === "delete"}
+                  className="flex-1 bg-red-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+                >
+                  {actionLoading === "delete" ? "Moving..." : "Move to bin"}
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="w-full text-xs text-gray-400 hover:text-red-500 transition-colors py-1"
-          >
-            🗑 Delete ticket
-          </button>
-        )}
-      </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="w-full text-xs text-gray-400 hover:text-red-500 transition-colors py-1"
+            >
+              🗑 Move to bin
+            </button>
+          )}
+        </div>
+      )}
 
-      <div className="mt-1 flex gap-2">
+      <div className={`mt-1 gap-2 ${ticket.deleted_at ? "hidden" : "flex"}`}>
         <button
           onClick={() => copyForHandyman(ticket)}
           className="flex-1 bg-gray-50 border border-gray-200 text-gray-600 rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-100 transition-colors"
@@ -392,17 +431,21 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
         <div className="flex-1 min-w-0">
           {/* Status tabs */}
           <div className="flex gap-2 mb-3 flex-wrap">
-            {["all", "open", "escalated", "resolved"].map((f) => (
+            {["all", "open", "escalated", "resolved", "bin"].map((f) => (
               <button
                 key={f}
-                onClick={() => setFilterStatus(f)}
+                onClick={() => {
+                  setFilterStatus(f);
+                  setSelected(null);
+                  setSelectedIds(new Set());
+                }}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
                   filterStatus === f
                     ? "bg-blue-600 text-white"
                     : "bg-white border border-gray-300 text-gray-600 hover:border-blue-400"
-                }`}
+                } ${f === "bin" ? "ml-auto" : ""}`}
               >
-                {f}
+                {f === "bin" ? "🗑 Bin" : f}
               </button>
             ))}
           </div>
@@ -458,19 +501,23 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
           {/* Mobile: card list */}
           <div className="flex flex-col gap-2 md:hidden">
             {filtered.length === 0 && (
-              <p className="text-center text-gray-400 py-8 text-sm">No tickets found</p>
+              <p className="text-center text-gray-400 py-8 text-sm">
+                {inBin ? "Bin is empty" : "No tickets found"}
+              </p>
             )}
             {filtered.map((ticket) => (
               <div
                 key={ticket.id}
                 className="flex items-start gap-3 bg-white border border-gray-200 rounded-xl p-4"
               >
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(ticket.id)}
-                  onChange={() => toggleSelect(ticket.id)}
-                  className="mt-0.5 w-4 h-4 shrink-0 accent-blue-600"
-                />
+                {!inBin && (
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(ticket.id)}
+                    onChange={() => toggleSelect(ticket.id)}
+                    className="mt-0.5 w-4 h-4 shrink-0 accent-blue-600"
+                  />
+                )}
                 <button
                   onClick={() => selectTicket(ticket)}
                   className="flex-1 min-w-0 text-left"
@@ -502,12 +549,14 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="w-10 px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={allFilteredSelected}
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 accent-blue-600 align-middle"
-                    />
+                    {!inBin && (
+                      <input
+                        type="checkbox"
+                        checked={allFilteredSelected}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 accent-blue-600 align-middle"
+                      />
+                    )}
                   </th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Reference</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Tenant</th>
@@ -527,12 +576,14 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     }`}
                   >
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(ticket.id)}
-                        onChange={() => toggleSelect(ticket.id)}
-                        className="w-4 h-4 accent-blue-600 align-middle"
-                      />
+                      {!inBin && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(ticket.id)}
+                          onChange={() => toggleSelect(ticket.id)}
+                          className="w-4 h-4 accent-blue-600 align-middle"
+                        />
+                      )}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">
                       {ticket.reference_number}
@@ -556,7 +607,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
-                      No tickets found
+                      {inBin ? "Bin is empty" : "No tickets found"}
                     </td>
                   </tr>
                 )}

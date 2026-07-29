@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 
+// Soft delete — moves the ticket to the bin. Media is kept so the ticket can be
+// restored. Permanent removal happens via /purge, or automatically after 30 days.
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ reference: string }> }
@@ -8,24 +10,14 @@ export async function POST(
   const { reference } = await params;
   const supabase = createAdminClient();
 
-  const { data: ticket } = await supabase
+  const { error } = await supabase
     .from("tickets")
-    .select("media_urls")
-    .eq("reference_number", reference)
-    .single();
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("reference_number", reference);
 
-  if (ticket?.media_urls?.length) {
-    const paths = ticket.media_urls
-      .map((url: string) => {
-        const marker = "/object/public/ticket-media/";
-        const idx = url.indexOf(marker);
-        return idx !== -1 ? url.slice(idx + marker.length) : "";
-      })
-      .filter(Boolean);
-    if (paths.length) await supabase.storage.from("ticket-media").remove(paths);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
-
-  await supabase.from("tickets").delete().eq("reference_number", reference);
 
   return NextResponse.json({ success: true });
 }

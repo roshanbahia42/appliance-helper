@@ -3,9 +3,7 @@ import { notFound } from "next/navigation";
 
 type Ticket = {
   reference_number: string;
-  tenant_name: string;
   tenant_room: string | null;
-  tenant_phone: string | null;
   property_address: string;
   category: string;
   description: string;
@@ -33,7 +31,8 @@ export default async function JobSheetPage({
   const { data: tickets } = await supabase
     .from("tickets")
     .select("*")
-    .in("reference_number", batch.reference_numbers);
+    .in("reference_number", batch.reference_numbers)
+    .is("deleted_at", null);
 
   const jobs: Ticket[] = tickets ?? [];
 
@@ -134,20 +133,11 @@ export default async function JobSheetPage({
                     </div>
                   )}
 
-                  <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-                    <span className="text-xs text-slate-500">
-                      {job.tenant_name}
-                      {job.tenant_room ? ` · Room ${job.tenant_room}` : ""}
-                    </span>
-                    {job.tenant_phone && (
-                      <a
-                        href={`tel:${job.tenant_phone.replace(/\s/g, "")}`}
-                        className="text-xs font-medium text-blue-700 hover:underline shrink-0"
-                      >
-                        {job.tenant_phone}
-                      </a>
-                    )}
-                  </div>
+                  {job.tenant_room && (
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <span className="text-xs text-slate-500">Room {job.tenant_room}</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
