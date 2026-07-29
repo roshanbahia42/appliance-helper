@@ -104,6 +104,7 @@ public/
 | status | text | `open` / `escalated` / `resolved` |
 | media_urls | text[] (nullable) | Public Supabase Storage URLs — min 1 required at submission |
 | sent_to_handyman_at | timestamptz (nullable) | Set when included in a job sheet |
+| deleted_at | timestamptz (nullable) | Set when moved to the bin; purged after 30 days |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
@@ -125,7 +126,25 @@ CREATE TABLE job_batches (
 );
 
 ALTER TABLE tickets ADD COLUMN sent_to_handyman_at timestamptz;
+ALTER TABLE tickets ADD COLUMN deleted_at timestamptz;
 ```
+
+### Row Level Security
+
+The anon key is public (it ships in the browser bundle), so every table must have
+RLS enabled or anyone can read and write the database directly. All app queries
+run server-side with the service role key, which bypasses RLS — so no policies
+are needed:
+
+```sql
+ALTER TABLE tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE job_batches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE properties ENABLE ROW LEVEL SECURITY;
+```
+
+Zero policies = the anon key can do nothing, the server keeps full access.
+If a browser-side table query is ever added it will silently return nothing
+until a policy is written for it.
 
 ### `ticket-media` storage bucket
 
@@ -202,10 +221,23 @@ Features:
 - Detail panel includes:
   - Tenant name, room, email, phone, property, category, description
   - **Mark resolved** / **Escalate** / **Reopen** status buttons
-  - **Delete ticket** (with confirmation) — removes ticket + storage files
+  - **Move to bin** (with confirmation) — soft delete, recoverable for 30 days
   - **Copy details** — clipboard-formatted text for handyman (property + room, issue, details, tenant name + phone — no email)
   - **WhatsApp** — opens WhatsApp with details pre-filled (single ticket)
   - **Attachments** — images open in full-screen lightbox; HEIC/unsupported shows download button
+
+### The bin
+
+Deleting a ticket moves it to the bin rather than destroying it:
+
+- The **🗑 Bin** tab shows binned tickets; they're hidden from all other views
+- Each shows how many days remain before permanent deletion
+- **Restore** puts it back; **Delete now** removes it and its media immediately
+- Anything binned for more than 30 days is purged automatically (row + storage
+  files) next time the dashboard loads — see `purgeExpiredBin` in
+  `admin/dashboard/page.tsx`
+- Binned tickets can't be added to a job sheet, and drop off any job sheet
+  they were already on
 
 ### Sending jobs to the handyman (batched)
 
@@ -230,8 +262,11 @@ Full details + photos: https://.../job/a1b2c3d4e5f6
 ```
 
 The link opens a **job sheet** — a public mobile page grouping every issue by
-property with photos inline, urgent flags, and tappable tenant phone numbers.
-This solves the attachment problem: one link instead of a wall of raw image URLs.
+property with photos inline, urgent flags, and room numbers. This solves the
+attachment problem: one link instead of a wall of raw image URLs.
+
+The handyman is deliberately not given tenant phone numbers or emails — access
+is arranged through the landlady.
 
 Job sheets have no login. The 12-character random token is unguessable, and the
 page shows nothing beyond what the handyman needs to do the work.
@@ -303,9 +338,10 @@ Type-check: `npx tsc --noEmit`
 
 ---
 
-## Known Cosmetic Issues
+## Known Issues
 
 - **Double filename in file picker**: selected file names appear both in the native input element and in the custom list below it. Functional, cosmetic fix deferred.
+- **Resolving a ticket deletes its photos immediately** (`api/tickets/[reference]/resolved`). This predates the Reopen and Bin features, so reopening or restoring a previously-resolved ticket leaves dead image links. Decide whether resolved tickets should keep their media until the ticket is purged.
 
 ---
 
