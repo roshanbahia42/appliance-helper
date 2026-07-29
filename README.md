@@ -53,6 +53,7 @@ src/
       places/route.ts                     # GET: Google Places autocomplete proxy (Birmingham only)
       upload-url/route.ts                 # POST: generates signed Supabase upload URL (bypasses RLS)
       job-batch/route.ts                  # POST: creates a handyman job sheet from selected tickets
+      tickets/bulk/route.ts               # POST: bulk bin / restore / purge for selected tickets
       tickets/[reference]/
         resolved/route.ts                 # POST: marks resolved (media kept)
         escalate/route.ts                 # POST: marks escalated (status only, no email)
@@ -239,7 +240,8 @@ To create admin credentials: Supabase → Authentication → Users → Add user.
 
 Features:
 - **Status tabs**: All / Open / Escalated / Resolved
-- **Filters**: tenant name search, property dropdown, category dropdown, date range (7d / 30d / all)
+- **Filters**: tenant name search, property dropdown, category dropdown, date
+  (last 7d / last 30d / older than 6 months / older than 1 year / all)
 - Detail panel includes:
   - Tenant name, room, email, phone, property, category, description
   - **Mark resolved** / **Escalate** / **Reopen** status buttons
@@ -258,8 +260,22 @@ Deleting a ticket moves it to the bin rather than destroying it:
 - Anything binned for more than 30 days is purged automatically (row + storage
   files) next time the dashboard loads — see `purgeExpiredBin` in
   `admin/dashboard/page.tsx`
-- Binned tickets can't be added to a job sheet, and drop off any job sheet
-  they were already on
+- Binned tickets drop off any job sheet they were already on
+
+### End-of-year clear-out
+
+Records are kept for the tenancy year, then cleared when tenants change over:
+
+1. Set the date filter to **Older than 1 year**
+2. Tick the header checkbox to select everything showing
+3. **🗑 Move to bin** in the selection bar
+
+That leaves a 30-day grace period before they're purged automatically. To skip
+the wait, open the **Bin** tab, select all, and **Delete permanently** — that one
+asks for confirmation, since it can't be undone.
+
+Bulk actions run as a single request (`/api/tickets/bulk`) rather than one call
+per ticket, so clearing a few hundred at once is fine.
 
 ### Sending jobs to the handyman (batched)
 
@@ -376,11 +392,8 @@ Type-check: `npx tsc --noEmit`
 5. **Rotate API keys** — all keys should be rotated before go-live (previously exposed in a dev session).
 6. **PWA icons** — placeholder icons in `public/`. Replace with real logo when available; update both `icon-192.png` and `icon-512.png`.
 7. **App name / branding** — "Student Maintenance Hub" is provisional. Decide on final name, logo, and category icons before launch.
-8. **Annual purge** — records are kept for the tenancy year, then cleared when
-   tenants change over. Currently this would mean binning tickets one at a time;
-   a bulk "purge everything before <date>" action would make it a single job.
-9. **Admin notes** — no way to add internal notes to a ticket.
-10. **Handyman job completion** — the job sheet is read-only. Could later let the
+8. **Admin notes** — no way to add internal notes to a ticket.
+9. **Handyman job completion** — the job sheet is read-only. Could later let the
    handyman tick jobs off, which would flow back to the dashboard.
 
 ---
