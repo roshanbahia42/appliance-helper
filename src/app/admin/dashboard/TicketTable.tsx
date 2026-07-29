@@ -93,12 +93,11 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
 
   const formatHandymanText = (ticket: Ticket) =>
     [
-      `Reference: ${ticket.reference_number}`,
-      `Property: ${ticket.property_address}`,
+      `Property: ${ticket.property_address}${ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}`,
       `Issue: ${ticket.category}`,
       ticket.description ? `Details: ${ticket.description}` : null,
       ``,
-      `Tenant: ${ticket.tenant_name}${ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}`,
+      `Tenant: ${ticket.tenant_name}`,
       ticket.tenant_phone ? `Phone: ${ticket.tenant_phone}` : null,
       (ticket.media_urls?.length ?? 0) > 0
         ? `\nPhotos/videos:\n${ticket.media_urls!.join("\n")}`

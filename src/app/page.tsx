@@ -161,16 +161,14 @@ export default function Home() {
     }, 300);
   };
 
-  const requiresDescription = !hasSubcategories(
-    category ?? ({ subcategories: [] } as unknown as Category)
-  );
-
   const isFormValid =
     form.name &&
     form.email &&
     validateEmail(form.email) &&
-    selectedProperty &&
-    (!requiresDescription || form.description);
+    form.phone &&
+    form.description &&
+    files.length > 0 &&
+    selectedProperty;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -571,12 +569,13 @@ export default function Home() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Phone (optional)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
                   <input
                     type="tel"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     placeholder=""
+                    required
                     className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -584,13 +583,11 @@ export default function Home() {
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                {requiresDescription ? "Please describe the issue *" : "Description (optional)"}
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Description *</label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                required={requiresDescription}
+                required
                 rows={3}
                 placeholder="When did it start, what have you already tried, any unusual sounds..."
                 className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
@@ -600,7 +597,7 @@ export default function Home() {
             <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Photos or videos (optional)
+                  Photos or videos *
                 </label>
                 <p className="text-xs text-slate-400 mb-2">Up to 5 files, 50MB each</p>
                 <input
