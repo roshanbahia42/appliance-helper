@@ -55,7 +55,7 @@ function isStale(ticket: { created_at: string; status: string }) {
   return ticket.status !== "resolved" && ageInDays(ticket.created_at) >= STALE_AFTER_DAYS;
 }
 
-type BulkAction = "delete" | "purge" | "resolve" | "reopen" | "restore";
+type BulkAction = "delete" | "purge" | "resolve" | "reopen" | "restore" | "escalate";
 
 // Every bulk action confirms first. Even restore: an accidental one scatters
 // tickets back among hundreds of others with no easy way to find them again.
@@ -93,6 +93,12 @@ const BULK_CONFIRM: Record<
     label: "Yes, restore",
     loading: "Restoring...",
     className: "bg-blue-600 hover:bg-blue-700",
+  },
+  escalate: {
+    prompt: (n) => `Flag ${n} ${n === 1 ? "ticket" : "tickets"} as urgent?`,
+    label: "Yes, escalate",
+    loading: "Escalating...",
+    className: "bg-red-600 hover:bg-red-700",
   },
 };
 
@@ -663,41 +669,49 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     Clear
                   </button>
                 </span>
-                <div className="flex gap-2 shrink-0">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2 shrink-0">
                   {inBin ? (
                     <>
                       <button
                         onClick={() => setConfirmBulk("restore")}
-                        className="flex-1 sm:flex-none border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
+                        className="border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
                       >
                         Restore
                       </button>
                       <button
                         onClick={() => setConfirmBulk("purge")}
-                        className="flex-1 sm:flex-none bg-red-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-red-700"
+                        className="bg-red-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-red-700"
                       >
-                        Delete permanently
+                        Delete
                       </button>
                     </>
                   ) : (
                     <>
                       <button
                         onClick={() => setConfirmBulk("delete")}
-                        className="flex-1 sm:flex-none border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
+                        className="border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
                       >
                         🗑 Bin
                       </button>
+                      {filterStatus !== "escalated" && filterStatus !== "resolved" && (
+                        <button
+                          onClick={() => setConfirmBulk("escalate")}
+                          className="border border-red-300 text-red-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-red-50"
+                        >
+                          Urgent
+                        </button>
+                      )}
                       {filterStatus === "resolved" ? (
                         <button
                           onClick={() => setConfirmBulk("reopen")}
-                          className="flex-1 sm:flex-none bg-blue-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-blue-700"
+                          className="bg-blue-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-blue-700"
                         >
                           Reopen
                         </button>
                       ) : (
                         <button
                           onClick={() => setConfirmBulk("resolve")}
-                          className="flex-1 sm:flex-none bg-green-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-green-700"
+                          className="bg-green-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-green-700"
                         >
                           Resolve
                         </button>
@@ -705,7 +719,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                       <button
                         onClick={sendBatchToHandyman}
                         disabled={sending}
-                        className="flex-1 sm:flex-none bg-[#25D366] text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-[#1ebe5d] disabled:opacity-50 transition-colors"
+                        className="bg-[#25D366] text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-[#1ebe5d] disabled:opacity-50 transition-colors"
                       >
                         {sending ? "Preparing..." : "Send"}
                       </button>
