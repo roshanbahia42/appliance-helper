@@ -53,7 +53,7 @@ src/
       places/route.ts                     # GET: Google Places autocomplete proxy (Birmingham only)
       upload-url/route.ts                 # POST: generates signed Supabase upload URL (bypasses RLS)
       job-batch/route.ts                  # POST: creates a handyman job sheet from selected tickets
-      tickets/bulk/route.ts               # POST: bulk bin / restore / purge / resolve
+      tickets/bulk/route.ts               # POST: bulk bin / restore / purge / resolve / reopen
       tickets/[reference]/
         resolved/route.ts                 # POST: marks resolved (media kept)
         escalate/route.ts                 # POST: marks escalated (status only, no email)
@@ -291,6 +291,20 @@ asks for confirmation, since it can't be undone.
 
 Bulk actions run as a single request (`/api/tickets/bulk`) rather than one call
 per ticket, so clearing a few hundred at once is fine.
+
+### The selection bar
+
+Ticking any checkbox raises a bar at the bottom of the screen. What it offers
+depends on which tab you're in:
+
+| Tab | Actions |
+|---|---|
+| All / Open / Escalated | 🗑 Bin · Resolve · Send |
+| Resolved | 🗑 Bin · Reopen · Send |
+| Bin | Restore · Delete permanently |
+
+Everything except Restore confirms first — the prompts and button colours live in
+`BULK_CONFIRM` in `TicketTable.tsx`.
 
 ### Sending jobs to the handyman (batched)
 
