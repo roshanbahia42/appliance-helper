@@ -401,8 +401,8 @@ export default function Home() {
       <div className="min-h-screen bg-slate-50">
         <header className="bg-[#0f2044] px-6 pt-6 pb-5">
           <div className="max-w-xl mx-auto">
-            <h1 className="text-xl font-bold text-white">Which property?</h1>
-            <p className="text-blue-200 text-sm mt-0.5">Select your property address</p>
+            <h1 className="text-xl font-bold text-white">Find Your Property</h1>
+            <p className="text-blue-200 text-sm mt-0.5">Search your address to link this report to your property.</p>
             <ProgressBar step={history[history.length - 2] === 2 ? 3 : 4} />
           </div>
         </header>
