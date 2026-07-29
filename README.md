@@ -231,6 +231,20 @@ Shows:
 Resolved tickets keep everything — the landlady needs a written record of what was
 reported. Media is removed only when a ticket is purged from the bin.
 
+### Status vs. sent — they are not the same thing
+
+Status answers *how urgent is this*. The ✓ answers *has it been passed on*. A
+ticket carries both independently:
+
+| | Not sent | Sent |
+|---|---|---|
+| **open** | New, waiting for the next handyman round | With the handyman, routine |
+| **escalated** | **Needs action now** — can't wait for the round | Urgent, handyman has it |
+
+Escalate must not be repurposed to mean "dealt with" — the ✓ already records
+that, emergency submissions set `escalated` automatically, and overloading it
+would make the red flag meaningless exactly when it matters most.
+
 ---
 
 ## Admin Dashboard (`/admin/login` → `/admin/dashboard`)
@@ -299,9 +313,12 @@ depends on which tab you're in:
 
 | Tab | Actions |
 |---|---|
-| All / Open / Escalated | 🗑 Bin · Resolve · Send |
+| All / Open | 🗑 Bin · Urgent · Resolve · Send |
+| Escalated | 🗑 Bin · Resolve · Send |
 | Resolved | 🗑 Bin · Reopen · Send |
-| Bin | Restore · Delete permanently |
+| Bin | Restore · Delete |
+
+Buttons lay out as a 2-column grid on mobile so four fit without cramping.
 
 Every action confirms first, including Restore — an accidental restore drops
 tickets back among hundreds of others with no easy way to find them again. The
