@@ -53,7 +53,7 @@ src/
       places/route.ts                     # GET: Google Places autocomplete proxy (Birmingham only)
       upload-url/route.ts                 # POST: generates signed Supabase upload URL (bypasses RLS)
       job-batch/route.ts                  # POST: creates a handyman job sheet from selected tickets
-      tickets/bulk/route.ts               # POST: bulk bin / restore / purge for selected tickets
+      tickets/bulk/route.ts               # POST: bulk bin / restore / purge / resolve
       tickets/[reference]/
         resolved/route.ts                 # POST: marks resolved (media kept)
         escalate/route.ts                 # POST: marks escalated (status only, no email)
@@ -61,6 +61,7 @@ src/
         delete/route.ts                   # POST: moves to bin (soft delete)
         restore/route.ts                  # POST: restores from bin
         purge/route.ts                    # POST: permanent delete — row + media files
+        notes/route.ts                    # POST: saves private admin notes
     confirmation/[reference]/
       page.tsx                            # confirmation page (server component)
       CloseTicketButton.tsx               # client component — subtle self-resolve link
@@ -110,6 +111,7 @@ public/
 | media_urls | text[] (nullable) | Public Supabase Storage URLs — min 1 required at submission |
 | sent_to_handyman_at | timestamptz (nullable) | Set when included in a job sheet |
 | deleted_at | timestamptz (nullable) | Set when moved to the bin; purged after 30 days |
+| admin_notes | text (nullable) | Landlady's private notes — never shown to tenant or handyman |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
@@ -130,6 +132,7 @@ CREATE TABLE IF NOT EXISTS job_batches (
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS tenant_room text;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sent_to_handyman_at timestamptz;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS admin_notes text;
 
 ALTER TABLE tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_batches ENABLE ROW LEVEL SECURITY;
@@ -240,11 +243,22 @@ To create admin credentials: Supabase → Authentication → Users → Add user.
 
 Features:
 - **Status tabs**: All / Open / Escalated / Resolved
-- **Filters**: tenant name search, property dropdown, category dropdown, date
+- **Search**: matches reference, tenant name, room, address, category,
+  description and private notes
+- **Filters**: property dropdown, category dropdown, date
   (last 7d / last 30d / older than 6 months / older than 1 year / all)
+- **Sort**: click a desktop column header to sort by tenant, property, status or
+  age; mobile gets a sort dropdown instead
+- **Ticket age** is shown on every row and turns red once an unresolved ticket
+  passes 14 days (`STALE_AFTER_DAYS`) — repairs must happen within a reasonable
+  time of being reported
+- **Sent status** — a green ✓ Sent pill, its own desktop column, and the send
+  date in the detail panel
 - Detail panel includes:
   - Tenant name, room, email, phone, property, category, description
   - **Mark resolved** / **Escalate** / **Reopen** status buttons
+  - **Private notes** — free-text box saved per ticket; tickets with notes show 📝
+  - Tenant email and phone are `mailto:` / `tel:` links
   - **Move to bin** (with confirmation) — soft delete, recoverable for 30 days
   - **Copy details** — clipboard-formatted text for handyman (property + room, issue, details, tenant name + phone — no email)
   - **WhatsApp** — opens WhatsApp with details pre-filled (single ticket)
@@ -268,7 +282,7 @@ Records are kept for the tenancy year, then cleared when tenants change over:
 
 1. Set the date filter to **Older than 1 year**
 2. Tick the header checkbox to select everything showing
-3. **🗑 Move to bin** in the selection bar
+3. **🗑 Bin** in the selection bar, then confirm
 
 That leaves a 30-day grace period before they're purged automatically. To skip
 the wait, open the **Bin** tab, select all, and **Delete permanently** — that one
@@ -392,8 +406,17 @@ Type-check: `npx tsc --noEmit`
 5. **Rotate API keys** — all keys should be rotated before go-live (previously exposed in a dev session).
 6. **PWA icons** — placeholder icons in `public/`. Replace with real logo when available; update both `icon-192.png` and `icon-512.png`.
 7. **App name / branding** — "Student Maintenance Hub" is provisional. Decide on final name, logo, and category icons before launch.
-8. **Admin notes** — no way to add internal notes to a ticket.
-9. **Handyman job completion** — the job sheet is read-only. Could later let the
+8. **CSV export** — needed before the first annual purge, so a year's records
+   survive without keeping the photos.
+9. **Stats strip** — counts by status, oldest open ticket, most-reported
+   property. Intended to sit alongside the status tabs.
+10. **Duplicate detection** — housemates reporting the same fault produce
+    several tickets for one job. Flag likely duplicates (same property +
+    category within a few days) and allow merging.
+11. **Email failures are silent** — `api/submit` never checks the Resend
+    response, so a failed tenant confirmation goes unnoticed. Log it and surface
+    it on the ticket.
+12. **Handyman job completion** — the job sheet is read-only. Could later let the
    handyman tick jobs off, which would flow back to the dashboard.
 
 ---
