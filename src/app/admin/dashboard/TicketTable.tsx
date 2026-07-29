@@ -16,6 +16,7 @@ type Ticket = {
   status: string;
   media_urls: string[] | null;
   created_at: string;
+  sent_to_handyman_at: string | null;
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -37,6 +38,8 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [copied, setCopied] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [sending, setSending] = useState(false);
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDate, setFilterDate] = useState("all");
@@ -114,6 +117,72 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const whatsappForHandyman = (ticket: Ticket) => {
     const text = encodeURIComponent(formatHandymanText(ticket));
     window.open(`https://wa.me/?text=${text}`, "_blank");
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((t) => selectedIds.has(t.id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) filtered.forEach((t) => next.delete(t.id));
+      else filtered.forEach((t) => next.add(t.id));
+      return next;
+    });
+  };
+
+  const formatBatchText = (chosen: Ticket[], url: string) => {
+    const byProperty = chosen.reduce<Record<string, Ticket[]>>((acc, t) => {
+      (acc[t.property_address] ??= []).push(t);
+      return acc;
+    }, {});
+
+    const lines = [`Hi, ${chosen.length} ${chosen.length === 1 ? "job" : "jobs"}:`, ""];
+    for (const address of Object.keys(byProperty).sort()) {
+      lines.push(address);
+      for (const t of byProperty[address]) {
+        lines.push(`• ${t.tenant_room ? `Room ${t.tenant_room} — ` : ""}${t.category}`);
+      }
+      lines.push("");
+    }
+    lines.push(`Full details + photos: ${url}`);
+    return lines.join("\n");
+  };
+
+  const sendBatchToHandyman = async () => {
+    const chosen = tickets.filter((t) => selectedIds.has(t.id));
+    if (chosen.length === 0) return;
+
+    setSending(true);
+    const res = await fetch("/api/job-batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reference_numbers: chosen.map((t) => t.reference_number) }),
+    });
+    const { token, error } = await res.json();
+    setSending(false);
+
+    if (!res.ok || !token) {
+      alert(error ?? "Failed to create job sheet");
+      return;
+    }
+
+    const url = `${window.location.origin}/job/${token}`;
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(formatBatchText(chosen, url))}`,
+      "_blank"
+    );
+    setSelectedIds(new Set());
+    router.refresh();
   };
 
   const selectTicket = (ticket: Ticket) => {
@@ -279,6 +348,30 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
         </div>
       )}
 
+      {/* Batch send bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg px-5 py-3">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+            <span className="text-sm text-gray-600">
+              {selectedIds.size} selected
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="ml-3 text-gray-400 hover:text-gray-600 text-xs underline"
+              >
+                Clear
+              </button>
+            </span>
+            <button
+              onClick={sendBatchToHandyman}
+              disabled={sending}
+              className="bg-[#25D366] text-white rounded-lg px-5 py-2.5 text-sm font-semibold hover:bg-[#1ebe5d] disabled:opacity-50 transition-colors shrink-0"
+            >
+              {sending ? "Preparing..." : "Send to handyman"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Mobile full-screen detail overlay */}
       {selected && (
         <div className="fixed inset-0 z-40 bg-white overflow-y-auto md:hidden">
@@ -295,7 +388,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
         </div>
       )}
 
-      <div className="flex gap-6">
+      <div className={`flex gap-6 ${selectedIds.size > 0 ? "pb-24" : ""}`}>
         <div className="flex-1 min-w-0">
           {/* Status tabs */}
           <div className="flex gap-2 mb-3 flex-wrap">
@@ -368,23 +461,38 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               <p className="text-center text-gray-400 py-8 text-sm">No tickets found</p>
             )}
             {filtered.map((ticket) => (
-              <button
+              <div
                 key={ticket.id}
-                onClick={() => selectTicket(ticket)}
-                className="w-full text-left bg-white border border-gray-200 rounded-xl p-4 transition-colors hover:border-blue-300 active:bg-blue-50"
+                className="flex items-start gap-3 bg-white border border-gray-200 rounded-xl p-4"
               >
-                <div className="flex justify-between items-start gap-2 mb-1">
-                  <span className="font-medium text-gray-900 text-sm">
-                    {ticket.tenant_name}{ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize shrink-0 ${STATUS_COLORS[ticket.status] ?? "bg-gray-100 text-gray-600"}`}>
-                    {ticket.status}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-600 truncate">{ticket.category}</p>
-                <p className="text-xs text-gray-400 truncate mt-0.5">{ticket.property_address}</p>
-                <p className="text-xs text-gray-300 mt-1">{new Date(ticket.created_at).toLocaleDateString()}</p>
-              </button>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(ticket.id)}
+                  onChange={() => toggleSelect(ticket.id)}
+                  className="mt-0.5 w-4 h-4 shrink-0 accent-blue-600"
+                />
+                <button
+                  onClick={() => selectTicket(ticket)}
+                  className="flex-1 min-w-0 text-left"
+                >
+                  <div className="flex justify-between items-start gap-2 mb-1">
+                    <span className="font-medium text-gray-900 text-sm">
+                      {ticket.tenant_name}{ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize shrink-0 ${STATUS_COLORS[ticket.status] ?? "bg-gray-100 text-gray-600"}`}>
+                      {ticket.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 truncate">{ticket.category}</p>
+                  <p className="text-xs text-gray-400 truncate mt-0.5">{ticket.property_address}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-gray-300">{new Date(ticket.created_at).toLocaleDateString()}</span>
+                    {ticket.sent_to_handyman_at && (
+                      <span className="text-xs text-green-600">✓ Sent</span>
+                    )}
+                  </div>
+                </button>
+              </div>
             ))}
           </div>
 
@@ -393,6 +501,14 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
+                  <th className="w-10 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 accent-blue-600 align-middle"
+                    />
+                  </th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Reference</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Tenant</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Property</th>
@@ -410,7 +526,20 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                       selected?.id === ticket.id ? "bg-blue-50" : "hover:bg-gray-50"
                     }`}
                   >
-                    <td className="px-4 py-3 font-mono text-xs text-gray-600">{ticket.reference_number}</td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(ticket.id)}
+                        onChange={() => toggleSelect(ticket.id)}
+                        className="w-4 h-4 accent-blue-600 align-middle"
+                      />
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-600">
+                      {ticket.reference_number}
+                      {ticket.sent_to_handyman_at && (
+                        <span className="ml-2 text-green-600" title="Sent to handyman">✓</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-gray-900">{ticket.tenant_name}</td>
                     <td className="px-4 py-3 text-gray-600 max-w-[150px] truncate">{ticket.property_address}</td>
                     <td className="px-4 py-3 text-gray-600">{ticket.category}</td>
@@ -426,7 +555,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                    <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                       No tickets found
                     </td>
                   </tr>
