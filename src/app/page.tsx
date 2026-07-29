@@ -241,9 +241,7 @@ export default function Home() {
       <div className="min-h-screen bg-slate-50">
         <header className="bg-[#0f2044] px-6 py-8">
           <div className="max-w-xl mx-auto">
-            <a href="/" className="block hover:opacity-80 transition-opacity">
-              <h1 className="text-2xl font-bold text-white">Student Maintenance Hub</h1>
-            </a>
+            <h1 className="text-2xl font-bold text-white">Student Maintenance Hub</h1>
             <p className="text-blue-200 text-sm mt-1">Select the type of issue to get started</p>
           </div>
         </header>
