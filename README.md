@@ -260,10 +260,10 @@ Features:
 - **Search**: matches reference, tenant name, room, address, category,
   description, private notes, and the report date — "July", "Jul", "29/07",
   "29 July" and "2026" all work
-- **Filters**: property dropdown, category dropdown, date
-  (last 7d / last 30d / older than 6 months / older than 1 year / all)
-- **Sort**: click a desktop column header to sort by tenant, property, status or
-  age; mobile gets a sort dropdown instead
+- **Filters**: property, category, sent status (not sent yet / already sent), and
+  date (last 7d / last 30d / older than 6 months / older than 1 year / all)
+- **Sort**: click a desktop column header to sort by tenant, property, status,
+  sent or age; mobile gets a sort dropdown instead
 - **Ticket age** is shown on every row and turns red once an unresolved ticket
   passes 14 days (`STALE_AFTER_DAYS`) — repairs must happen within a reasonable
   time of being reported
@@ -323,6 +323,17 @@ Buttons lay out as a 2-column grid on mobile so four fit without cramping.
 Every action confirms first, including Restore — an accidental restore drops
 tickets back among hundreds of others with no easy way to find them again. The
 prompts and button colours live in `BULK_CONFIRM` in `TicketTable.tsx`.
+
+### The fortnightly round
+
+The handyman visits roughly fortnightly, so the routine before a visit is:
+
+1. Status tab **Open**, sent filter **Not sent yet**
+2. Header checkbox to select them all
+3. **Send** — one WhatsApp message, grouped by property
+
+After the visit, filter to **Already sent** and bulk **Resolve** whatever got
+done. Anything still showing had to wait, and its age keeps climbing.
 
 ### Sending jobs to the handyman (batched)
 
