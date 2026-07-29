@@ -52,6 +52,7 @@ src/
       submit/route.ts                     # POST: saves ticket to DB, sends emails
       places/route.ts                     # GET: Google Places autocomplete proxy (Birmingham only)
       upload-url/route.ts                 # POST: generates signed Supabase upload URL (bypasses RLS)
+      job-batch/route.ts                  # POST: creates a handyman job sheet from selected tickets
       tickets/[reference]/
         resolved/route.ts                 # POST: marks resolved, deletes media from storage
         escalate/route.ts                 # POST: marks escalated (status only, no email)
@@ -60,6 +61,8 @@ src/
     confirmation/[reference]/
       page.tsx                            # confirmation page (server component)
       CloseTicketButton.tsx               # client component — subtle self-resolve link
+    job/[token]/
+      page.tsx                            # public handyman job sheet — no auth, unguessable token
     admin/
       layout.tsx                          # admin layout — links to admin PWA manifest
       login/page.tsx                      # landlady login (Supabase Auth)
@@ -100,12 +103,28 @@ public/
 | description | text | Required at submission |
 | status | text | `open` / `escalated` / `resolved` |
 | media_urls | text[] (nullable) | Public Supabase Storage URLs — min 1 required at submission |
+| sent_to_handyman_at | timestamptz (nullable) | Set when included in a job sheet |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
 If `tenant_room` column is missing, run:
 ```sql
 ALTER TABLE tickets ADD COLUMN tenant_room text;
+```
+
+### `job_batches` table
+
+Stores handyman job sheets. Required for the batch send feature:
+
+```sql
+CREATE TABLE job_batches (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  token text UNIQUE NOT NULL,
+  reference_numbers text[] NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE tickets ADD COLUMN sent_to_handyman_at timestamptz;
 ```
 
 ### `ticket-media` storage bucket
@@ -185,8 +204,40 @@ Features:
   - **Mark resolved** / **Escalate** / **Reopen** status buttons
   - **Delete ticket** (with confirmation) — removes ticket + storage files
   - **Copy details** — clipboard-formatted text for handyman (property + room, issue, details, tenant name + phone — no email)
-  - **WhatsApp** — opens WhatsApp with details pre-filled
+  - **WhatsApp** — opens WhatsApp with details pre-filled (single ticket)
   - **Attachments** — images open in full-screen lightbox; HEIC/unsupported shows download button
+
+### Sending jobs to the handyman (batched)
+
+The landlady's existing workflow was writing jobs into her notes app grouped by
+property and sending one WhatsApp per property. The dashboard automates that:
+
+1. Tick the checkbox on each ticket to send (or the header checkbox to select all filtered)
+2. A bar appears at the bottom — tap **Send to handyman**
+3. WhatsApp opens with one message, grouped by property:
+
+```
+Hi, 5 jobs:
+
+1 Example Road
+• Room 1 — Plumbing — Shower leaking
+• Kitchen — Furniture — Coffee table leg
+
+2 Example Road
+• Room 6 — Furniture — Bed broken
+
+Full details + photos: https://.../job/a1b2c3d4e5f6
+```
+
+The link opens a **job sheet** — a public mobile page grouping every issue by
+property with photos inline, urgent flags, and tappable tenant phone numbers.
+This solves the attachment problem: one link instead of a wall of raw image URLs.
+
+Job sheets have no login. The 12-character random token is unguessable, and the
+page shows nothing beyond what the handyman needs to do the work.
+
+Tickets included in a job sheet are marked with a green ✓ **Sent** so it's clear
+what has already been dispatched.
 
 ### Admin PWA
 
@@ -268,6 +319,8 @@ Type-check: `npx tsc --noEmit`
 6. **PWA icons** — placeholder icons in `public/`. Replace with real logo when available; update both `icon-192.png` and `icon-512.png`.
 7. **App name / branding** — "Student Maintenance Hub" is provisional. Decide on final name, logo, and category icons before launch.
 8. **Admin notes** — no way to add internal notes to a ticket.
+9. **Handyman job completion** — the job sheet is read-only. Could later let the
+   handyman tick jobs off, which would flow back to the dashboard.
 
 ---
 
