@@ -35,10 +35,14 @@ const STATUS_COLORS: Record<string, string> = {
   escalated: "bg-red-100 text-red-800",
 };
 
+// "recent-N" keeps tickets from the last N days; "older-N" keeps ones from before
+// then — the latter is what makes an end-of-year clear-out possible.
 const DATE_OPTIONS = [
   { label: "All time", value: "all" },
-  { label: "Last 7 days", value: "7d" },
-  { label: "Last 30 days", value: "30d" },
+  { label: "Last 7 days", value: "recent-7" },
+  { label: "Last 30 days", value: "recent-30" },
+  { label: "Older than 6 months", value: "older-183" },
+  { label: "Older than 1 year", value: "older-365" },
 ];
 
 export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
@@ -50,6 +54,8 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState<string | null>(null);
+  const [confirmBulkPurge, setConfirmBulkPurge] = useState(false);
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDate, setFilterDate] = useState("all");
@@ -69,10 +75,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     if (filterCategory !== "all" && t.category !== filterCategory) return false;
     if (searchTenant && !t.tenant_name.toLowerCase().includes(searchTenant.toLowerCase())) return false;
     if (filterDate !== "all") {
-      const days = filterDate === "7d" ? 7 : 30;
+      const [mode, days] = filterDate.split("-");
       const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - days);
-      if (new Date(t.created_at) < cutoff) return false;
+      cutoff.setDate(cutoff.getDate() - Number(days));
+      const created = new Date(t.created_at);
+      if (mode === "recent" && created < cutoff) return false;
+      if (mode === "older" && created > cutoff) return false;
     }
     return true;
   });
@@ -193,6 +201,38 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     );
     setSelectedIds(new Set());
     router.refresh();
+  };
+
+  const bulkAction = async (action: "delete" | "restore" | "purge") => {
+    const chosen = tickets.filter((t) => selectedIds.has(t.id));
+    if (chosen.length === 0) return;
+
+    setBulkLoading(action);
+    const res = await fetch("/api/tickets/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reference_numbers: chosen.map((t) => t.reference_number),
+        action,
+      }),
+    });
+    setBulkLoading(null);
+
+    if (!res.ok) {
+      const { error } = await res.json();
+      alert(error ?? "Action failed");
+      return;
+    }
+
+    setSelectedIds(new Set());
+    setConfirmBulkPurge(false);
+    setSelected(null);
+    router.refresh();
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setConfirmBulkPurge(false);
   };
 
   const selectTicket = (ticket: Ticket) => {
@@ -390,23 +430,78 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       {/* Batch send bar */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg px-5 py-3">
-          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-            <span className="text-sm text-gray-600">
-              {selectedIds.size} selected
-              <button
-                onClick={() => setSelectedIds(new Set())}
-                className="ml-3 text-gray-400 hover:text-gray-600 text-xs underline"
-              >
-                Clear
-              </button>
-            </span>
-            <button
-              onClick={sendBatchToHandyman}
-              disabled={sending}
-              className="bg-[#25D366] text-white rounded-lg px-5 py-2.5 text-sm font-semibold hover:bg-[#1ebe5d] disabled:opacity-50 transition-colors shrink-0"
-            >
-              {sending ? "Preparing..." : "Send to handyman"}
-            </button>
+          <div className="max-w-5xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            {confirmBulkPurge ? (
+              <>
+                <span className="text-sm text-gray-700">
+                  Delete {selectedIds.size} {selectedIds.size === 1 ? "ticket" : "tickets"}{" "}
+                  permanently? This cannot be undone.
+                </span>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => setConfirmBulkPurge(false)}
+                    className="flex-1 sm:flex-none border border-gray-300 text-gray-600 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => bulkAction("purge")}
+                    disabled={!!bulkLoading}
+                    className="flex-1 sm:flex-none bg-red-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {bulkLoading === "purge" ? "Deleting..." : "Yes, delete"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="text-sm text-gray-600">
+                  {selectedIds.size} selected
+                  <button
+                    onClick={clearSelection}
+                    className="ml-3 text-gray-400 hover:text-gray-600 text-xs underline"
+                  >
+                    Clear
+                  </button>
+                </span>
+                <div className="flex gap-2 shrink-0">
+                  {inBin ? (
+                    <>
+                      <button
+                        onClick={() => bulkAction("restore")}
+                        disabled={!!bulkLoading}
+                        className="flex-1 sm:flex-none border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        {bulkLoading === "restore" ? "Restoring..." : "Restore"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmBulkPurge(true)}
+                        className="flex-1 sm:flex-none bg-red-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-red-700"
+                      >
+                        Delete permanently
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => bulkAction("delete")}
+                        disabled={!!bulkLoading}
+                        className="flex-1 sm:flex-none border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        {bulkLoading === "delete" ? "Moving..." : "🗑 Move to bin"}
+                      </button>
+                      <button
+                        onClick={sendBatchToHandyman}
+                        disabled={sending}
+                        className="flex-1 sm:flex-none bg-[#25D366] text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-[#1ebe5d] disabled:opacity-50 transition-colors"
+                      >
+                        {sending ? "Preparing..." : "Send to handyman"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -437,7 +532,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 onClick={() => {
                   setFilterStatus(f);
                   setSelected(null);
-                  setSelectedIds(new Set());
+                  clearSelection();
                 }}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
                   filterStatus === f
@@ -510,14 +605,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 key={ticket.id}
                 className="flex items-start gap-3 bg-white border border-gray-200 rounded-xl p-4"
               >
-                {!inBin && (
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(ticket.id)}
-                    onChange={() => toggleSelect(ticket.id)}
-                    className="mt-0.5 w-4 h-4 shrink-0 accent-blue-600"
-                  />
-                )}
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(ticket.id)}
+                  onChange={() => toggleSelect(ticket.id)}
+                  className="mt-0.5 w-4 h-4 shrink-0 accent-blue-600"
+                />
                 <button
                   onClick={() => selectTicket(ticket)}
                   className="flex-1 min-w-0 text-left"
@@ -549,14 +642,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="w-10 px-4 py-3">
-                    {!inBin && (
-                      <input
-                        type="checkbox"
-                        checked={allFilteredSelected}
-                        onChange={toggleSelectAll}
-                        className="w-4 h-4 accent-blue-600 align-middle"
-                      />
-                    )}
+                    <input
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 accent-blue-600 align-middle"
+                    />
                   </th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Reference</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Tenant</th>
@@ -576,14 +667,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     }`}
                   >
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      {!inBin && (
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(ticket.id)}
-                          onChange={() => toggleSelect(ticket.id)}
-                          className="w-4 h-4 accent-blue-600 align-middle"
-                        />
-                      )}
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(ticket.id)}
+                        onChange={() => toggleSelect(ticket.id)}
+                        className="w-4 h-4 accent-blue-600 align-middle"
+                      />
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">
                       {ticket.reference_number}
