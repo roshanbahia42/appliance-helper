@@ -54,10 +54,12 @@ src/
       upload-url/route.ts                 # POST: generates signed Supabase upload URL (bypasses RLS)
       job-batch/route.ts                  # POST: creates a handyman job sheet from selected tickets
       tickets/[reference]/
-        resolved/route.ts                 # POST: marks resolved, deletes media from storage
+        resolved/route.ts                 # POST: marks resolved (media kept)
         escalate/route.ts                 # POST: marks escalated (status only, no email)
         reopen/route.ts                   # POST: sets status back to open
-        delete/route.ts                   # POST: deletes ticket + media files from storage
+        delete/route.ts                   # POST: moves to bin (soft delete)
+        restore/route.ts                  # POST: restores from bin
+        purge/route.ts                    # POST: permanent delete — row + media files
     confirmation/[reference]/
       page.tsx                            # confirmation page (server component)
       CloseTicketButton.tsx               # client component — subtle self-resolve link
@@ -73,6 +75,8 @@ src/
   lib/
     categories.ts                         # source of truth: all categories, subcategories, tips
                                           # also contains CONTACTS object with landlady/landlord phone numbers
+    media.ts                              # browser-side image compression + HEIC→JPEG
+    storage.ts                            # shared helpers for deleting ticket media
   utils/
     supabase/
       admin.ts                            # service-role client (server only)
@@ -152,9 +156,24 @@ until a policy is written for it.
 
 - **Public** bucket — files readable by anyone with the URL
 - Uploads go via signed URLs generated server-side (no RLS policy required)
-- Files auto-deleted when ticket is marked resolved or deleted
-- 50MB per-file limit enforced client-side, max 5 files per submission
-- HEIC files upload fine but won't preview in Chrome/Firefox — a download fallback is shown
+- Max 5 files per submission. Videos capped at 25MB, photos at 50MB before compression
+- Files are deleted only when a ticket is **purged** from the bin — resolving keeps them
+
+### Image compression
+
+Photos are downscaled to 1600px and re-encoded as JPEG in the browser before
+upload (`src/lib/media.ts`), typically a 10x reduction while staying sharp enough
+to diagnose a fault. This keeps the project inside the 1GB free storage tier —
+roughly 1,400 tickets rather than 170.
+
+It also converts HEIC to JPEG, so iPhone photos display in the dashboard and job
+sheet instead of falling back to a download link. If the browser can't decode the
+format (Chrome and Firefox can't read HEIC), the original file uploads unchanged,
+so compression failing never blocks a submission — the HEIC download fallbacks in
+the UI remain as a safety net.
+
+Video can't be compressed browser-side, which is why the cap is lower: a single
+25MB clip costs as much storage as ~35 compressed photos.
 
 ---
 
@@ -205,7 +224,8 @@ Shows:
 | `escalated` | Priority — needs urgent attention | Emergency at submission; admin can escalate |
 | `resolved` | Fixed / closed | Admin or tenant marks resolved |
 
-When marked **resolved** or **deleted**, media files are automatically removed from Supabase Storage.
+Resolved tickets keep everything — the landlady needs a written record of what was
+reported. Media is removed only when a ticket is purged from the bin.
 
 ---
 
@@ -343,7 +363,7 @@ Type-check: `npx tsc --noEmit`
 ## Known Issues
 
 - **Double filename in file picker**: selected file names appear both in the native input element and in the custom list below it. Functional, cosmetic fix deferred.
-- **Resolving a ticket deletes its photos immediately** (`api/tickets/[reference]/resolved`). This predates the Reopen and Bin features, so reopening or restoring a previously-resolved ticket leaves dead image links. Decide whether resolved tickets should keep their media until the ticket is purged.
+- **Tickets resolved before July 2026** had their photos deleted on resolve (the old behaviour), so their `media_urls` point at files that no longer exist.
 
 ---
 
@@ -356,8 +376,11 @@ Type-check: `npx tsc --noEmit`
 5. **Rotate API keys** — all keys should be rotated before go-live (previously exposed in a dev session).
 6. **PWA icons** — placeholder icons in `public/`. Replace with real logo when available; update both `icon-192.png` and `icon-512.png`.
 7. **App name / branding** — "Student Maintenance Hub" is provisional. Decide on final name, logo, and category icons before launch.
-8. **Admin notes** — no way to add internal notes to a ticket.
-9. **Handyman job completion** — the job sheet is read-only. Could later let the
+8. **Annual purge** — records are kept for the tenancy year, then cleared when
+   tenants change over. Currently this would mean binning tickets one at a time;
+   a bulk "purge everything before <date>" action would make it a single job.
+9. **Admin notes** — no way to add internal notes to a ticket.
+10. **Handyman job completion** — the job sheet is read-only. Could later let the
    handyman tick jobs off, which would flow back to the dashboard.
 
 ---
