@@ -36,6 +36,40 @@ const STATUS_COLORS: Record<string, string> = {
   escalated: "bg-red-100 text-red-800",
 };
 
+// Anything unresolved beyond this gets flagged — repairs have to happen within a
+// reasonable time, measured from when the tenant reported it.
+const STALE_AFTER_DAYS = 14;
+
+function ageInDays(createdAt: string) {
+  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
+}
+
+function formatAge(createdAt: string) {
+  const days = ageInDays(createdAt);
+  if (days === 0) return "Today";
+  if (days === 1) return "1 day";
+  return `${days} days`;
+}
+
+function isStale(ticket: { created_at: string; status: string }) {
+  return ticket.status !== "resolved" && ageInDays(ticket.created_at) >= STALE_AFTER_DAYS;
+}
+
+const SORT_OPTIONS = [
+  { label: "Newest first", value: "created-desc" },
+  { label: "Oldest first", value: "created-asc" },
+  { label: "Tenant A–Z", value: "tenant-asc" },
+  { label: "Property A–Z", value: "property-asc" },
+  { label: "Status", value: "status-asc" },
+];
+
+const SORT_VALUES: Record<string, (t: Ticket) => string | number> = {
+  created: (t) => new Date(t.created_at).getTime(),
+  tenant: (t) => t.tenant_name.toLowerCase(),
+  property: (t) => t.property_address.toLowerCase(),
+  status: (t) => t.status,
+};
+
 // "recent-N" keeps tickets from the last N days; "older-N" keeps ones from before
 // then — the latter is what makes an end-of-year clear-out possible.
 const DATE_OPTIONS = [
@@ -56,7 +90,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
   const [bulkLoading, setBulkLoading] = useState<string | null>(null);
-  const [confirmBulkPurge, setConfirmBulkPurge] = useState(false);
+  const [confirmBulk, setConfirmBulk] = useState<"delete" | "purge" | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaved, setNoteSaved] = useState(false);
 
@@ -64,40 +98,80 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [filterDate, setFilterDate] = useState("all");
   const [filterProperty, setFilterProperty] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [searchTenant, setSearchTenant] = useState("");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("created-desc");
 
   const uniqueProperties = [...new Set(tickets.map((t) => t.property_address))].sort();
   const uniqueCategories = [...new Set(tickets.map((t) => t.category))].sort();
 
   const inBin = filterStatus === "bin";
 
-  const filtered = tickets.filter((t) => {
-    if (inBin !== !!t.deleted_at) return false;
-    if (!inBin && filterStatus !== "all" && t.status !== filterStatus) return false;
-    if (filterProperty !== "all" && t.property_address !== filterProperty) return false;
-    if (filterCategory !== "all" && t.category !== filterCategory) return false;
-    if (searchTenant && !t.tenant_name.toLowerCase().includes(searchTenant.toLowerCase())) return false;
-    if (filterDate !== "all") {
-      const [mode, days] = filterDate.split("-");
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - Number(days));
-      const created = new Date(t.created_at);
-      if (mode === "recent" && created < cutoff) return false;
-      if (mode === "older" && created > cutoff) return false;
-    }
-    return true;
-  });
+  const filtered = tickets
+    .filter((t) => {
+      if (inBin !== !!t.deleted_at) return false;
+      if (!inBin && filterStatus !== "all" && t.status !== filterStatus) return false;
+      if (filterProperty !== "all" && t.property_address !== filterProperty) return false;
+      if (filterCategory !== "all" && t.category !== filterCategory) return false;
+      if (search) {
+        const haystack = [
+          t.tenant_name,
+          t.tenant_room,
+          t.reference_number,
+          t.property_address,
+          t.category,
+          t.description,
+          t.admin_notes,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(search.toLowerCase())) return false;
+      }
+      if (filterDate !== "all") {
+        const [mode, days] = filterDate.split("-");
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - Number(days));
+        const created = new Date(t.created_at);
+        if (mode === "recent" && created < cutoff) return false;
+        if (mode === "older" && created > cutoff) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const [field, direction] = sort.split("-");
+      const get = SORT_VALUES[field] ?? SORT_VALUES.created;
+      const av = get(a);
+      const bv = get(b);
+      if (av === bv) return 0;
+      return (av < bv ? -1 : 1) * (direction === "asc" ? 1 : -1);
+    });
 
   const hasActiveFilters =
     filterStatus !== "all" || filterDate !== "all" || filterProperty !== "all" ||
-    filterCategory !== "all" || searchTenant !== "";
+    filterCategory !== "all" || search !== "" || sort !== "created-desc";
 
   const clearFilters = () => {
     setFilterStatus("all");
     setFilterDate("all");
     setFilterProperty("all");
     setFilterCategory("all");
-    setSearchTenant("");
+    setSearch("");
+    setSort("created-desc");
+  };
+
+  /** Clicking a desktop column header cycles that column's sort direction. */
+  const toggleSort = (field: string) => {
+    setSort((prev) => {
+      const [prevField, prevDirection] = prev.split("-");
+      if (prevField !== field) return `${field}-${field === "created" ? "desc" : "asc"}`;
+      return `${field}-${prevDirection === "asc" ? "desc" : "asc"}`;
+    });
+  };
+
+  const sortIndicator = (field: string) => {
+    const [currentField, direction] = sort.split("-");
+    if (currentField !== field) return "";
+    return direction === "asc" ? " ↑" : " ↓";
   };
 
   const binTicket = async (reference: string, action: "delete" | "purge" | "restore") => {
@@ -206,7 +280,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     router.refresh();
   };
 
-  const bulkAction = async (action: "delete" | "restore" | "purge") => {
+  const bulkAction = async (action: "delete" | "restore" | "purge" | "resolve") => {
     const chosen = tickets.filter((t) => selectedIds.has(t.id));
     if (chosen.length === 0) return;
 
@@ -228,14 +302,14 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     }
 
     setSelectedIds(new Set());
-    setConfirmBulkPurge(false);
+    setConfirmBulk(null);
     setSelected(null);
     router.refresh();
   };
 
   const clearSelection = () => {
     setSelectedIds(new Set());
-    setConfirmBulkPurge(false);
+    setConfirmBulk(null);
   };
 
   const saveNote = async (reference: string) => {
@@ -262,10 +336,44 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const renderDetailBody = (ticket: Ticket) => (
     <div className="flex flex-col gap-2 text-sm">
       <div><span className="text-gray-500">Tenant: </span><span className="text-gray-900">{ticket.tenant_name}{ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}</span></div>
-      <div><span className="text-gray-500">Email: </span><span className="text-gray-900">{ticket.tenant_email}</span></div>
-      <div><span className="text-gray-500">Phone: </span><span className="text-gray-900">{ticket.tenant_phone ?? "Not provided"}</span></div>
+      <div>
+        <span className="text-gray-500">Email: </span>
+        <a
+          href={`mailto:${ticket.tenant_email}?subject=${encodeURIComponent(`Maintenance request ${ticket.reference_number}`)}`}
+          className="text-blue-700 hover:underline break-all"
+        >
+          {ticket.tenant_email}
+        </a>
+      </div>
+      <div>
+        <span className="text-gray-500">Phone: </span>
+        {ticket.tenant_phone ? (
+          <a
+            href={`tel:${ticket.tenant_phone.replace(/\s/g, "")}`}
+            className="text-blue-700 hover:underline"
+          >
+            {ticket.tenant_phone}
+          </a>
+        ) : (
+          <span className="text-gray-900">Not provided</span>
+        )}
+      </div>
       <div><span className="text-gray-500">Property: </span><span className="text-gray-900">{ticket.property_address}</span></div>
       <div><span className="text-gray-500">Category: </span><span className="text-gray-900">{ticket.category}</span></div>
+      <div>
+        <span className="text-gray-500">Reported: </span>
+        <span className={isStale(ticket) ? "text-red-600 font-medium" : "text-gray-900"}>
+          {new Date(ticket.created_at).toLocaleDateString()} · {formatAge(ticket.created_at)} ago
+        </span>
+      </div>
+      <div>
+        <span className="text-gray-500">Sent to handyman: </span>
+        <span className={ticket.sent_to_handyman_at ? "text-green-700 font-medium" : "text-gray-400"}>
+          {ticket.sent_to_handyman_at
+            ? new Date(ticket.sent_to_handyman_at).toLocaleDateString()
+            : "Not yet"}
+        </span>
+      </div>
       <div className="mt-2">
         <span className="text-gray-500 block mb-1">Issue:</span>
         <p className="text-gray-900 bg-gray-50 rounded p-2">{ticket.description}</p>
@@ -471,25 +579,32 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       {selectedIds.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg px-5 py-3">
           <div className="max-w-5xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            {confirmBulkPurge ? (
+            {confirmBulk ? (
               <>
                 <span className="text-sm text-gray-700">
-                  Delete {selectedIds.size} {selectedIds.size === 1 ? "ticket" : "tickets"}{" "}
-                  permanently? This cannot be undone.
+                  {confirmBulk === "purge"
+                    ? `Delete ${selectedIds.size} ${selectedIds.size === 1 ? "ticket" : "tickets"} permanently? This cannot be undone.`
+                    : `Move ${selectedIds.size} ${selectedIds.size === 1 ? "ticket" : "tickets"} to the bin?`}
                 </span>
                 <div className="flex gap-2 shrink-0">
                   <button
-                    onClick={() => setConfirmBulkPurge(false)}
+                    onClick={() => setConfirmBulk(null)}
                     className="flex-1 sm:flex-none border border-gray-300 text-gray-600 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
                   >
                     Cancel
                   </button>
                   <button
-                    onClick={() => bulkAction("purge")}
+                    onClick={() => bulkAction(confirmBulk)}
                     disabled={!!bulkLoading}
                     className="flex-1 sm:flex-none bg-red-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
                   >
-                    {bulkLoading === "purge" ? "Deleting..." : "Yes, delete"}
+                    {bulkLoading
+                      ? confirmBulk === "purge"
+                        ? "Deleting..."
+                        : "Moving..."
+                      : confirmBulk === "purge"
+                        ? "Yes, delete"
+                        : "Yes, move to bin"}
                   </button>
                 </div>
               </>
@@ -515,7 +630,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                         {bulkLoading === "restore" ? "Restoring..." : "Restore"}
                       </button>
                       <button
-                        onClick={() => setConfirmBulkPurge(true)}
+                        onClick={() => setConfirmBulk("purge")}
                         className="flex-1 sm:flex-none bg-red-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-red-700"
                       >
                         Delete permanently
@@ -524,18 +639,24 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                   ) : (
                     <>
                       <button
-                        onClick={() => bulkAction("delete")}
-                        disabled={!!bulkLoading}
-                        className="flex-1 sm:flex-none border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                        onClick={() => setConfirmBulk("delete")}
+                        className="flex-1 sm:flex-none border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
                       >
-                        {bulkLoading === "delete" ? "Moving..." : "🗑 Move to bin"}
+                        🗑 Bin
+                      </button>
+                      <button
+                        onClick={() => bulkAction("resolve")}
+                        disabled={!!bulkLoading}
+                        className="flex-1 sm:flex-none bg-green-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {bulkLoading === "resolve" ? "Saving..." : "Resolve"}
                       </button>
                       <button
                         onClick={sendBatchToHandyman}
                         disabled={sending}
                         className="flex-1 sm:flex-none bg-[#25D366] text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-[#1ebe5d] disabled:opacity-50 transition-colors"
                       >
-                        {sending ? "Preparing..." : "Send to handyman"}
+                        {sending ? "Preparing..." : "Send"}
                       </button>
                     </>
                   )}
@@ -589,10 +710,10 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
           <div className="flex flex-col gap-2 mb-4 md:flex-row md:flex-wrap">
             <input
               type="text"
-              placeholder="Search tenant..."
-              value={searchTenant}
-              onChange={(e) => setSearchTenant(e.target.value)}
-              className="w-full md:w-40 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Search name, address, issue..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full md:w-56 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <select
               value={filterProperty}
@@ -620,6 +741,16 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               className="w-full md:w-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {DATE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            {/* Desktop sorts via the column headers, so this is mobile-only. */}
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="w-full md:hidden border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {SORT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
@@ -665,11 +796,23 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                   </div>
                   <p className="text-xs text-gray-600 truncate">{ticket.category}</p>
                   <p className="text-xs text-gray-400 truncate mt-0.5">{ticket.property_address}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-gray-300">{new Date(ticket.created_at).toLocaleDateString()}</span>
-                    {ticket.sent_to_handyman_at && (
-                      <span className="text-xs text-green-600">✓ Sent</span>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    {ticket.sent_to_handyman_at ? (
+                      <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded-full">
+                        ✓ Sent
+                      </span>
+                    ) : (
+                      !inBin && (
+                        <span className="inline-flex items-center bg-gray-100 text-gray-500 text-xs font-medium px-2 py-0.5 rounded-full">
+                          Not sent
+                        </span>
+                      )
                     )}
+                    <span
+                      className={`text-xs ${isStale(ticket) ? "text-red-600 font-medium" : "text-gray-400"}`}
+                    >
+                      {formatAge(ticket.created_at)}
+                    </span>
                     {ticket.admin_notes && (
                       <span className="text-xs text-gray-400" title="Has notes">📝</span>
                     )}
@@ -693,11 +836,32 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     />
                   </th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Reference</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Tenant</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Property</th>
+                  <th
+                    onClick={() => toggleSort("tenant")}
+                    className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer select-none hover:text-gray-900"
+                  >
+                    Tenant{sortIndicator("tenant")}
+                  </th>
+                  <th
+                    onClick={() => toggleSort("property")}
+                    className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer select-none hover:text-gray-900"
+                  >
+                    Property{sortIndicator("property")}
+                  </th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Category</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                  <th
+                    onClick={() => toggleSort("status")}
+                    className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer select-none hover:text-gray-900"
+                  >
+                    Status{sortIndicator("status")}
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Sent</th>
+                  <th
+                    onClick={() => toggleSort("created")}
+                    className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer select-none hover:text-gray-900"
+                  >
+                    Age{sortIndicator("created")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -734,14 +898,26 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                         {ticket.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">
-                      {new Date(ticket.created_at).toLocaleDateString()}
+                    <td className="px-4 py-3">
+                      {ticket.sent_to_handyman_at ? (
+                        <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">
+                          ✓ Sent
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td
+                      className={`px-4 py-3 text-xs ${isStale(ticket) ? "text-red-600 font-semibold" : "text-gray-400"}`}
+                      title={new Date(ticket.created_at).toLocaleDateString()}
+                    >
+                      {formatAge(ticket.created_at)}
                     </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                    <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
                       {inBin ? "Bin is empty" : "No tickets found"}
                     </td>
                   </tr>
