@@ -138,7 +138,8 @@ export default function Home() {
 
   const selectSubcategory = (sub: Subcategory) => {
     setSubcategory(sub);
-    goTo(3);
+    const urgent = sub.isUrgent || (category?.isEmergency ?? false);
+    goTo(urgent ? 3 : 4);
   };
 
   const fetchSuggestions = (input: string) => {
@@ -373,6 +374,18 @@ export default function Home() {
             </ol>
           </div>
 
+          {!isUrgent && (
+            <a
+              href={`https://www.youtube.com/results?search_query=how+to+fix+${encodeURIComponent(subcategory.name)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-slate-500 bg-white border border-slate-200 rounded-xl px-4 py-3 hover:bg-slate-50 transition-colors"
+            >
+              <span>▶️</span>
+              <span>Search YouTube for a fix — <span className="text-slate-700 font-medium">{subcategory.name}</span></span>
+            </a>
+          )}
+
           <div className="flex flex-col gap-3 mt-2">
             <p className="text-sm font-medium text-slate-600 text-center">Did these steps fix your issue?</p>
             <button
@@ -382,7 +395,7 @@ export default function Home() {
               ✓ {isUrgent ? "I have followed these steps — all safe" : "Problem solved!"}
             </button>
             <button
-              onClick={() => goTo(4)}
+              onClick={() => goTo(isUrgent ? 4 : 5)}
               className={`w-full text-white rounded-xl px-4 py-3.5 text-sm font-semibold transition-colors ${
                 isUrgent ? "bg-red-700 hover:bg-red-800" : "bg-[#0f2044] hover:bg-blue-900"
               }`}
@@ -467,7 +480,7 @@ export default function Home() {
             </p>
           </div>
           <button
-            onClick={() => goTo(5)}
+            onClick={() => goTo(history[history.length - 2] === 2 ? 3 : 5)}
             disabled={!selectedProperty}
             className="w-full mt-5 bg-[#0f2044] text-white rounded-xl px-4 py-3.5 text-sm font-semibold hover:bg-blue-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
