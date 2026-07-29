@@ -253,8 +253,8 @@ Features:
 - **Ticket age** is shown on every row and turns red once an unresolved ticket
   passes 14 days (`STALE_AFTER_DAYS`) — repairs must happen within a reasonable
   time of being reported
-- **Sent status** — a green ✓ Sent pill, its own desktop column, and the send
-  date in the detail panel
+- **Sent status** — a bold green ✓ (its own desktop column), with the send date
+  in the detail panel
 - Detail panel includes:
   - Tenant name, room, email, phone, property, category, description
   - **Mark resolved** / **Escalate** / **Reopen** status buttons
