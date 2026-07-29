@@ -38,7 +38,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [copied, setCopied] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
-  // Filters
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDate, setFilterDate] = useState("all");
   const [filterProperty, setFilterProperty] = useState("all");
@@ -117,6 +116,126 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
+  const selectTicket = (ticket: Ticket) => {
+    setSelected(selected?.id === ticket.id ? null : ticket);
+    setConfirmDelete(false);
+  };
+
+  const renderDetailBody = (ticket: Ticket) => (
+    <div className="flex flex-col gap-2 text-sm">
+      <div><span className="text-gray-500">Tenant: </span><span className="text-gray-900">{ticket.tenant_name}{ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}</span></div>
+      <div><span className="text-gray-500">Email: </span><span className="text-gray-900">{ticket.tenant_email}</span></div>
+      <div><span className="text-gray-500">Phone: </span><span className="text-gray-900">{ticket.tenant_phone ?? "Not provided"}</span></div>
+      <div><span className="text-gray-500">Property: </span><span className="text-gray-900">{ticket.property_address}</span></div>
+      <div><span className="text-gray-500">Category: </span><span className="text-gray-900">{ticket.category}</span></div>
+      <div className="mt-2">
+        <span className="text-gray-500 block mb-1">Issue:</span>
+        <p className="text-gray-900 bg-gray-50 rounded p-2">{ticket.description}</p>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2">
+        {ticket.status !== "resolved" && (
+          <button
+            onClick={() => updateStatus(ticket.reference_number, "resolved")}
+            disabled={!!actionLoading}
+            className="w-full bg-green-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+          >
+            {actionLoading === "resolved" ? "Saving..." : "Mark resolved"}
+          </button>
+        )}
+        {ticket.status === "open" && (
+          <button
+            onClick={() => updateStatus(ticket.reference_number, "escalate")}
+            disabled={!!actionLoading}
+            className="w-full bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+          >
+            {actionLoading === "escalate" ? "Saving..." : "Escalate"}
+          </button>
+        )}
+        {(ticket.status === "resolved" || ticket.status === "escalated") && (
+          <button
+            onClick={() => updateStatus(ticket.reference_number, "reopen")}
+            disabled={!!actionLoading}
+            className="w-full bg-white border border-gray-300 text-gray-600 rounded-lg px-3 py-2 text-sm font-medium hover:border-gray-400 disabled:opacity-50 transition-colors"
+          >
+            {actionLoading === "reopen" ? "Saving..." : "Reopen"}
+          </button>
+        )}
+      </div>
+
+      <div className="mt-2 pt-2 border-t border-gray-100">
+        {confirmDelete ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-gray-500 text-center">Delete this ticket permanently?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 border border-gray-300 text-gray-600 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteTicket(ticket.reference_number)}
+                disabled={actionLoading === "delete"}
+                className="flex-1 bg-red-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {actionLoading === "delete" ? "Deleting..." : "Yes, delete"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="w-full text-xs text-gray-400 hover:text-red-500 transition-colors py-1"
+          >
+            🗑 Delete ticket
+          </button>
+        )}
+      </div>
+
+      <div className="mt-1 flex gap-2">
+        <button
+          onClick={() => copyForHandyman(ticket)}
+          className="flex-1 bg-gray-50 border border-gray-200 text-gray-600 rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-100 transition-colors"
+        >
+          {copied ? "Copied ✓" : "Copy details"}
+        </button>
+        <button
+          onClick={() => whatsappForHandyman(ticket)}
+          className="flex-1 bg-[#25D366] text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-[#1ebe5d] transition-colors"
+        >
+          WhatsApp
+        </button>
+      </div>
+
+      {(ticket.media_urls ?? []).length > 0 && (
+        <div className="mt-2">
+          <span className="text-gray-500 block mb-2">Attachments:</span>
+          <div className="grid grid-cols-2 gap-2">
+            {ticket.media_urls!.map((url, i) => {
+              const isVideo = /\.(mp4|mov|avi|webm|mkv)$/i.test(url);
+              return isVideo ? (
+                <video key={i} src={url} controls className="w-full rounded-lg col-span-2" />
+              ) : (
+                <button
+                  key={i}
+                  onClick={() => setLightboxUrl(url)}
+                  className="w-full rounded-lg overflow-hidden aspect-square"
+                >
+                  <img
+                    src={url}
+                    alt={`Attachment ${i + 1}`}
+                    className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <>
       {lightboxUrl && (
@@ -160,10 +279,26 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
         </div>
       )}
 
+      {/* Mobile full-screen detail overlay */}
+      {selected && (
+        <div className="fixed inset-0 z-40 bg-white overflow-y-auto md:hidden">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-4 flex justify-between items-center">
+            <h3 className="font-semibold text-gray-900">{selected.reference_number}</h3>
+            <button
+              onClick={() => setSelected(null)}
+              className="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center"
+            >
+              ×
+            </button>
+          </div>
+          <div className="p-5">{renderDetailBody(selected)}</div>
+        </div>
+      )}
+
       <div className="flex gap-6">
         <div className="flex-1 min-w-0">
           {/* Status tabs */}
-          <div className="flex gap-2 mb-3">
+          <div className="flex gap-2 mb-3 flex-wrap">
             {["all", "open", "escalated", "resolved"].map((f) => (
               <button
                 key={f}
@@ -179,19 +314,19 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
             ))}
           </div>
 
-          {/* Secondary filters */}
-          <div className="flex flex-wrap gap-2 mb-4">
+          {/* Filters */}
+          <div className="flex flex-col gap-2 mb-4 md:flex-row md:flex-wrap">
             <input
               type="text"
               placeholder="Search tenant..."
               value={searchTenant}
               onChange={(e) => setSearchTenant(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
+              className="w-full md:w-40 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <select
               value={filterProperty}
               onChange={(e) => setFilterProperty(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[180px]"
+              className="w-full md:w-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All properties</option>
               {uniqueProperties.map((p) => (
@@ -201,7 +336,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full md:w-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All categories</option>
               {uniqueCategories.map((c) => (
@@ -211,7 +346,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
             <select
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full md:w-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {DATE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -220,14 +355,41 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="text-sm text-gray-400 hover:text-gray-600 px-2"
+                className="text-sm text-gray-400 hover:text-gray-600 px-2 text-left"
               >
                 Clear filters
               </button>
             )}
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          {/* Mobile: card list */}
+          <div className="flex flex-col gap-2 md:hidden">
+            {filtered.length === 0 && (
+              <p className="text-center text-gray-400 py-8 text-sm">No tickets found</p>
+            )}
+            {filtered.map((ticket) => (
+              <button
+                key={ticket.id}
+                onClick={() => selectTicket(ticket)}
+                className="w-full text-left bg-white border border-gray-200 rounded-xl p-4 transition-colors hover:border-blue-300 active:bg-blue-50"
+              >
+                <div className="flex justify-between items-start gap-2 mb-1">
+                  <span className="font-medium text-gray-900 text-sm">
+                    {ticket.tenant_name}{ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize shrink-0 ${STATUS_COLORS[ticket.status] ?? "bg-gray-100 text-gray-600"}`}>
+                    {ticket.status}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 truncate">{ticket.category}</p>
+                <p className="text-xs text-gray-400 truncate mt-0.5">{ticket.property_address}</p>
+                <p className="text-xs text-gray-300 mt-1">{new Date(ticket.created_at).toLocaleDateString()}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden md:block bg-white border border-gray-200 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -243,7 +405,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 {filtered.map((ticket) => (
                   <tr
                     key={ticket.id}
-                    onClick={() => { setSelected(selected?.id === ticket.id ? null : ticket); setConfirmDelete(false); }}
+                    onClick={() => selectTicket(ticket)}
                     className={`border-b border-gray-100 cursor-pointer transition-colors ${
                       selected?.id === ticket.id ? "bg-blue-50" : "hover:bg-gray-50"
                     }`}
@@ -274,8 +436,9 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
           </div>
         </div>
 
+        {/* Desktop: side panel */}
         {selected && (
-          <div className="w-80 shrink-0 bg-white border border-gray-200 rounded-xl p-5 h-fit sticky top-6">
+          <div className="hidden md:block w-80 shrink-0 bg-white border border-gray-200 rounded-xl p-5 h-fit sticky top-6">
             <div className="flex justify-between items-start mb-4">
               <h3 className="font-semibold text-gray-900">{selected.reference_number}</h3>
               <button
@@ -285,123 +448,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 ×
               </button>
             </div>
-
-            <div className="flex flex-col gap-2 text-sm">
-              <div><span className="text-gray-500">Tenant: </span><span className="text-gray-900">{selected.tenant_name}{selected.tenant_room ? ` — Room ${selected.tenant_room}` : ""}</span></div>
-              <div><span className="text-gray-500">Email: </span><span className="text-gray-900">{selected.tenant_email}</span></div>
-              <div><span className="text-gray-500">Phone: </span><span className="text-gray-900">{selected.tenant_phone ?? "Not provided"}</span></div>
-              <div><span className="text-gray-500">Property: </span><span className="text-gray-900">{selected.property_address}</span></div>
-              <div><span className="text-gray-500">Category: </span><span className="text-gray-900">{selected.category}</span></div>
-              <div className="mt-2">
-                <span className="text-gray-500 block mb-1">Issue:</span>
-                <p className="text-gray-900 bg-gray-50 rounded p-2">{selected.description}</p>
-              </div>
-
-              {/* Status actions */}
-              <div className="mt-4 flex flex-col gap-2">
-                {selected.status !== "resolved" && (
-                  <button
-                    onClick={() => updateStatus(selected.reference_number, "resolved")}
-                    disabled={!!actionLoading}
-                    className="w-full bg-green-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
-                  >
-                    {actionLoading === "resolved" ? "Saving..." : "Mark resolved"}
-                  </button>
-                )}
-                {selected.status === "open" && (
-                  <button
-                    onClick={() => updateStatus(selected.reference_number, "escalate")}
-                    disabled={!!actionLoading}
-                    className="w-full bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
-                  >
-                    {actionLoading === "escalate" ? "Saving..." : "Escalate"}
-                  </button>
-                )}
-                {(selected.status === "resolved" || selected.status === "escalated") && (
-                  <button
-                    onClick={() => updateStatus(selected.reference_number, "reopen")}
-                    disabled={!!actionLoading}
-                    className="w-full bg-white border border-gray-300 text-gray-600 rounded-lg px-3 py-2 text-sm font-medium hover:border-gray-400 disabled:opacity-50 transition-colors"
-                  >
-                    {actionLoading === "reopen" ? "Saving..." : "Reopen"}
-                  </button>
-                )}
-              </div>
-
-              {/* Delete */}
-              <div className="mt-2 pt-2 border-t border-gray-100">
-                {confirmDelete ? (
-                  <div className="flex flex-col gap-2">
-                    <p className="text-xs text-gray-500 text-center">Delete this ticket permanently?</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setConfirmDelete(false)}
-                        className="flex-1 border border-gray-300 text-gray-600 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => deleteTicket(selected.reference_number)}
-                        disabled={actionLoading === "delete"}
-                        className="flex-1 bg-red-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-red-700 disabled:opacity-50"
-                      >
-                        {actionLoading === "delete" ? "Deleting..." : "Yes, delete"}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setConfirmDelete(true)}
-                    className="w-full text-xs text-gray-400 hover:text-red-500 transition-colors py-1"
-                  >
-                    🗑 Delete ticket
-                  </button>
-                )}
-              </div>
-
-              {/* Handyman actions */}
-              <div className="mt-1 flex gap-2">
-                <button
-                  onClick={() => copyForHandyman(selected)}
-                  className="flex-1 bg-gray-50 border border-gray-200 text-gray-600 rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-100 transition-colors"
-                >
-                  {copied ? "Copied ✓" : "Copy details"}
-                </button>
-                <button
-                  onClick={() => whatsappForHandyman(selected)}
-                  className="flex-1 bg-[#25D366] text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-[#1ebe5d] transition-colors"
-                >
-                  WhatsApp
-                </button>
-              </div>
-
-              {/* Attachments */}
-              {(selected.media_urls ?? []).length > 0 && (
-                <div className="mt-2">
-                  <span className="text-gray-500 block mb-2">Attachments:</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {selected.media_urls!.map((url, i) => {
-                      const isVideo = /\.(mp4|mov|avi|webm|mkv)$/i.test(url);
-                      return isVideo ? (
-                        <video key={i} src={url} controls className="w-full rounded-lg col-span-2" />
-                      ) : (
-                        <button
-                          key={i}
-                          onClick={() => setLightboxUrl(url)}
-                          className="w-full rounded-lg overflow-hidden aspect-square"
-                        >
-                          <img
-                            src={url}
-                            alt={`Attachment ${i + 1}`}
-                            className="w-full h-full object-cover hover:opacity-90 transition-opacity"
-                          />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+            {renderDetailBody(selected)}
           </div>
         )}
       </div>
