@@ -113,6 +113,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       if (filterProperty !== "all" && t.property_address !== filterProperty) return false;
       if (filterCategory !== "all" && t.category !== filterCategory) return false;
       if (search) {
+        const created = new Date(t.created_at);
         const haystack = [
           t.tenant_name,
           t.tenant_room,
@@ -121,6 +122,14 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
           t.category,
           t.description,
           t.admin_notes,
+          // Several formats so "July", "Jul", "29/07", "29 July" and "2026" all hit.
+          created.toLocaleDateString("en-GB"),
+          created.toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+          created.toLocaleDateString("en-GB", { month: "short" }),
         ]
           .filter(Boolean)
           .join(" ")
@@ -710,7 +719,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
           <div className="flex flex-col gap-2 mb-4 md:flex-row md:flex-wrap">
             <input
               type="text"
-              placeholder="Search name, address, issue..."
+              placeholder="Search name, address, issue, date..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full md:w-56 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
