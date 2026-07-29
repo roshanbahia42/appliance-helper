@@ -303,8 +303,9 @@ depends on which tab you're in:
 | Resolved | 🗑 Bin · Reopen · Send |
 | Bin | Restore · Delete permanently |
 
-Everything except Restore confirms first — the prompts and button colours live in
-`BULK_CONFIRM` in `TicketTable.tsx`.
+Every action confirms first, including Restore — an accidental restore drops
+tickets back among hundreds of others with no easy way to find them again. The
+prompts and button colours live in `BULK_CONFIRM` in `TicketTable.tsx`.
 
 ### Sending jobs to the handyman (batched)
 
