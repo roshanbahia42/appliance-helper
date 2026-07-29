@@ -326,7 +326,7 @@ export default function Home() {
             <p className="text-white/70 text-sm mt-0.5">
               {isUrgent ? "Follow these steps immediately" : "Before you report, please try these steps"}
             </p>
-            <ProgressBar step={3} />
+            <ProgressBar step={isUrgent ? 3 : 4} />
           </div>
         </header>
 
@@ -403,7 +403,7 @@ export default function Home() {
           <div className="max-w-xl mx-auto">
             <h1 className="text-xl font-bold text-white">Which property?</h1>
             <p className="text-blue-200 text-sm mt-0.5">Select your property address</p>
-            <ProgressBar step={4} />
+            <ProgressBar step={history[history.length - 2] === 2 ? 3 : 4} />
           </div>
         </header>
         <div className="max-w-xl mx-auto p-6">
