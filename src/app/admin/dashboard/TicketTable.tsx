@@ -18,6 +18,7 @@ type Ticket = {
   created_at: string;
   sent_to_handyman_at: string | null;
   deleted_at: string | null;
+  admin_notes: string | null;
 };
 
 const BIN_RETENTION_DAYS = 30;
@@ -56,6 +57,8 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [sending, setSending] = useState(false);
   const [bulkLoading, setBulkLoading] = useState<string | null>(null);
   const [confirmBulkPurge, setConfirmBulkPurge] = useState(false);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteSaved, setNoteSaved] = useState(false);
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDate, setFilterDate] = useState("all");
@@ -235,9 +238,25 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     setConfirmBulkPurge(false);
   };
 
+  const saveNote = async (reference: string) => {
+    setActionLoading("note");
+    await fetch(`/api/tickets/${reference}/notes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: noteDraft }),
+    });
+    setActionLoading(null);
+    setNoteSaved(true);
+    setTimeout(() => setNoteSaved(false), 2000);
+    router.refresh();
+  };
+
   const selectTicket = (ticket: Ticket) => {
-    setSelected(selected?.id === ticket.id ? null : ticket);
+    const next = selected?.id === ticket.id ? null : ticket;
+    setSelected(next);
     setConfirmDelete(false);
+    setNoteDraft(next?.admin_notes ?? "");
+    setNoteSaved(false);
   };
 
   const renderDetailBody = (ticket: Ticket) => (
@@ -250,6 +269,27 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       <div className="mt-2">
         <span className="text-gray-500 block mb-1">Issue:</span>
         <p className="text-gray-900 bg-gray-50 rounded p-2">{ticket.description}</p>
+      </div>
+
+      <div className="mt-2">
+        <span className="text-gray-500 block mb-1">Your notes:</span>
+        <textarea
+          value={noteDraft}
+          onChange={(e) => setNoteDraft(e.target.value)}
+          rows={3}
+          placeholder="Private — only you can see this"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+        />
+        {noteDraft !== (ticket.admin_notes ?? "") && (
+          <button
+            onClick={() => saveNote(ticket.reference_number)}
+            disabled={actionLoading === "note"}
+            className="mt-1 w-full bg-gray-100 border border-gray-200 text-gray-700 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-gray-200 disabled:opacity-50"
+          >
+            {actionLoading === "note" ? "Saving..." : "Save note"}
+          </button>
+        )}
+        {noteSaved && <p className="mt-1 text-xs text-green-600 text-center">Note saved</p>}
       </div>
 
       {ticket.deleted_at && (
@@ -630,6 +670,9 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     {ticket.sent_to_handyman_at && (
                       <span className="text-xs text-green-600">✓ Sent</span>
                     )}
+                    {ticket.admin_notes && (
+                      <span className="text-xs text-gray-400" title="Has notes">📝</span>
+                    )}
                   </div>
                 </button>
               </div>
@@ -678,6 +721,9 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                       {ticket.reference_number}
                       {ticket.sent_to_handyman_at && (
                         <span className="ml-2 text-green-600" title="Sent to handyman">✓</span>
+                      )}
+                      {ticket.admin_notes && (
+                        <span className="ml-1" title="Has notes">📝</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-gray-900">{ticket.tenant_name}</td>
