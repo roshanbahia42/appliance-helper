@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { deleteTicketMedia } from "@/lib/storage";
 
-const ACTIONS = ["delete", "restore", "purge", "resolve"] as const;
+const ACTIONS = ["delete", "restore", "purge", "resolve", "reopen"] as const;
 type Action = (typeof ACTIONS)[number];
 
 export async function POST(request: NextRequest) {
@@ -34,10 +34,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, count: reference_numbers.length });
   }
 
+  const now = new Date().toISOString();
   const update =
     action === "resolve"
-      ? { status: "resolved", updated_at: new Date().toISOString() }
-      : { deleted_at: action === "delete" ? new Date().toISOString() : null };
+      ? { status: "resolved", updated_at: now }
+      : action === "reopen"
+        ? { status: "open", updated_at: now }
+        : { deleted_at: action === "delete" ? now : null };
 
   const { error } = await supabase
     .from("tickets")

@@ -55,6 +55,40 @@ function isStale(ticket: { created_at: string; status: string }) {
   return ticket.status !== "resolved" && ageInDays(ticket.created_at) >= STALE_AFTER_DAYS;
 }
 
+type BulkAction = "delete" | "purge" | "resolve" | "reopen" | "restore";
+
+// Everything that asks before it acts. Restore is absent — it's harmless.
+const BULK_CONFIRM: Record<
+  string,
+  { prompt: (n: number) => string; label: string; loading: string; className: string }
+> = {
+  delete: {
+    prompt: (n) => `Move ${n} ${n === 1 ? "ticket" : "tickets"} to the bin?`,
+    label: "Yes, move to bin",
+    loading: "Moving...",
+    className: "bg-red-600 hover:bg-red-700",
+  },
+  purge: {
+    prompt: (n) =>
+      `Delete ${n} ${n === 1 ? "ticket" : "tickets"} permanently? This cannot be undone.`,
+    label: "Yes, delete",
+    loading: "Deleting...",
+    className: "bg-red-600 hover:bg-red-700",
+  },
+  resolve: {
+    prompt: (n) => `Mark ${n} ${n === 1 ? "ticket" : "tickets"} as resolved?`,
+    label: "Yes, resolve",
+    loading: "Saving...",
+    className: "bg-green-600 hover:bg-green-700",
+  },
+  reopen: {
+    prompt: (n) => `Reopen ${n} ${n === 1 ? "ticket" : "tickets"}?`,
+    label: "Yes, reopen",
+    loading: "Reopening...",
+    className: "bg-blue-600 hover:bg-blue-700",
+  },
+};
+
 const SORT_OPTIONS = [
   { label: "Newest first", value: "created-desc" },
   { label: "Oldest first", value: "created-asc" },
@@ -90,7 +124,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
   const [bulkLoading, setBulkLoading] = useState<string | null>(null);
-  const [confirmBulk, setConfirmBulk] = useState<"delete" | "purge" | null>(null);
+  const [confirmBulk, setConfirmBulk] = useState<BulkAction | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaved, setNoteSaved] = useState(false);
 
@@ -289,7 +323,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     router.refresh();
   };
 
-  const bulkAction = async (action: "delete" | "restore" | "purge" | "resolve") => {
+  const bulkAction = async (action: BulkAction) => {
     const chosen = tickets.filter((t) => selectedIds.has(t.id));
     if (chosen.length === 0) return;
 
@@ -591,9 +625,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
             {confirmBulk ? (
               <>
                 <span className="text-sm text-gray-700">
-                  {confirmBulk === "purge"
-                    ? `Delete ${selectedIds.size} ${selectedIds.size === 1 ? "ticket" : "tickets"} permanently? This cannot be undone.`
-                    : `Move ${selectedIds.size} ${selectedIds.size === 1 ? "ticket" : "tickets"} to the bin?`}
+                  {BULK_CONFIRM[confirmBulk].prompt(selectedIds.size)}
                 </span>
                 <div className="flex gap-2 shrink-0">
                   <button
@@ -605,15 +637,11 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                   <button
                     onClick={() => bulkAction(confirmBulk)}
                     disabled={!!bulkLoading}
-                    className="flex-1 sm:flex-none bg-red-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+                    className={`flex-1 sm:flex-none text-white rounded-lg px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${BULK_CONFIRM[confirmBulk].className}`}
                   >
                     {bulkLoading
-                      ? confirmBulk === "purge"
-                        ? "Deleting..."
-                        : "Moving..."
-                      : confirmBulk === "purge"
-                        ? "Yes, delete"
-                        : "Yes, move to bin"}
+                      ? BULK_CONFIRM[confirmBulk].loading
+                      : BULK_CONFIRM[confirmBulk].label}
                   </button>
                 </div>
               </>
@@ -653,13 +681,21 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                       >
                         🗑 Bin
                       </button>
-                      <button
-                        onClick={() => bulkAction("resolve")}
-                        disabled={!!bulkLoading}
-                        className="flex-1 sm:flex-none bg-green-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-green-700 disabled:opacity-50"
-                      >
-                        {bulkLoading === "resolve" ? "Saving..." : "Resolve"}
-                      </button>
+                      {filterStatus === "resolved" ? (
+                        <button
+                          onClick={() => setConfirmBulk("reopen")}
+                          className="flex-1 sm:flex-none bg-blue-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-blue-700"
+                        >
+                          Reopen
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmBulk("resolve")}
+                          className="flex-1 sm:flex-none bg-green-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-green-700"
+                        >
+                          Resolve
+                        </button>
+                      )}
                       <button
                         onClick={sendBatchToHandyman}
                         disabled={sending}
