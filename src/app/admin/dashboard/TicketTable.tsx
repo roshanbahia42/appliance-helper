@@ -806,16 +806,10 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                   <p className="text-xs text-gray-600 truncate">{ticket.category}</p>
                   <p className="text-xs text-gray-400 truncate mt-0.5">{ticket.property_address}</p>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    {ticket.sent_to_handyman_at ? (
-                      <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded-full">
-                        ✓ Sent
+                    {ticket.sent_to_handyman_at && (
+                      <span className="text-green-600 text-base leading-none font-bold" title="Sent to handyman">
+                        ✓
                       </span>
-                    ) : (
-                      !inBin && (
-                        <span className="inline-flex items-center bg-gray-100 text-gray-500 text-xs font-medium px-2 py-0.5 rounded-full">
-                          Not sent
-                        </span>
-                      )
                     )}
                     <span
                       className={`text-xs ${isStale(ticket) ? "text-red-600 font-medium" : "text-gray-400"}`}
@@ -892,9 +886,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">
                       {ticket.reference_number}
-                      {ticket.sent_to_handyman_at && (
-                        <span className="ml-2 text-green-600" title="Sent to handyman">✓</span>
-                      )}
                       {ticket.admin_notes && (
                         <span className="ml-1" title="Has notes">📝</span>
                       )}
@@ -909,11 +900,11 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     </td>
                     <td className="px-4 py-3">
                       {ticket.sent_to_handyman_at ? (
-                        <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">
-                          ✓ Sent
+                        <span className="text-green-600 text-base font-bold" title="Sent to handyman">
+                          ✓
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-400">—</span>
+                        <span className="text-xs text-gray-300">—</span>
                       )}
                     </td>
                     <td
