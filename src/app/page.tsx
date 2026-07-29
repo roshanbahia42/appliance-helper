@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES, type Category, type Subcategory } from "@/lib/categories";
+import { compressImage, isVideo, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES } from "@/lib/media";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -80,7 +81,7 @@ export default function Home() {
     const urls: string[] = [];
     for (let i = 0; i < files.length; i++) {
       setUploadProgress(Math.round((i / files.length) * 100));
-      const file = files[i];
+      const file = await compressImage(files[i]);
 
       const res = await fetch("/api/upload-url", {
         method: "POST",
@@ -584,21 +585,27 @@ export default function Home() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Photos or videos*
                 </label>
-                <p className="text-xs text-slate-400 mb-2">Up to 5 files, 50MB each</p>
+                <p className="text-xs text-slate-400 mb-2">
+                  Up to 5 files. Videos must be under 25MB — photos are compressed automatically.
+                </p>
                 <input
                   type="file"
                   accept="image/*,video/*"
                   multiple
                   onChange={(e) => {
-                    const selected = Array.from(e.target.files ?? []);
-                    const oversized = selected.filter((f) => f.size > 50 * 1024 * 1024);
+                    const selected = Array.from(e.target.files ?? []).slice(0, 5);
+                    const oversized = selected.filter(
+                      (f) => f.size > (isVideo(f) ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)
+                    );
                     if (oversized.length > 0) {
-                      setError(`${oversized.map((f) => f.name).join(", ")} exceeds the 50MB limit`);
+                      setError(
+                        `${oversized.map((f) => f.name).join(", ")} is too large — videos must be under 25MB, photos under 50MB`
+                      );
                       e.target.value = "";
                       return;
                     }
                     setError("");
-                    setFiles(selected.slice(0, 5));
+                    setFiles(selected);
                   }}
                   className="w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#0f2044] file:text-white hover:file:bg-blue-900 file:cursor-pointer"
                 />
