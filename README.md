@@ -272,11 +272,34 @@ Features:
 - Detail panel includes:
   - Tenant name, room, email, phone, property, category, description
   - **Mark resolved** / **Escalate** / **Reopen** status buttons
+  - **Other reports at this property** — see below
   - **Private notes** — free-text box saved per ticket; tickets with notes show 📝
   - Tenant email and phone are `mailto:` / `tel:` links
   - **Move to bin** (with confirmation) — soft delete, recoverable for 30 days
   - **Send to handyman** — opens WhatsApp with this one ticket pre-filled
   - **Attachments** — images open in full-screen lightbox; HEIC/unsupported shows download button
+
+### Spotting duplicates
+
+Housemates sharing a boiler produce several tickets for one job. The detail panel
+lists every other report at the same address within 14 days
+(`RELATED_WINDOW_DAYS`), newest first, showing reference, room, category, age and
+status. **Note as duplicate** writes `Duplicate of <ref>` into the notes so the
+reference never has to be typed out.
+
+Two deliberate choices:
+
+- **It ignores category.** Housemates file the same fault under different ones —
+  "Heating — No hot water" and "Plumbing — Boiler issue" are the same boiler.
+  Matching on category would miss exactly the cases worth catching.
+- **It never says "duplicate".** It reports what else is happening at that
+  address and leaves the judgement alone. Two different showers leaking in a
+  six-bed house look identical to one shower reported twice, and wrongly merging
+  them means a real fault never gets fixed — a worse outcome than a duplicate
+  line on a job sheet.
+
+Resolved tickets are included on purpose: something reported, fixed, then
+reported again isn't a duplicate, it's a repair that didn't hold.
 
 ### The bin
 
@@ -438,7 +461,6 @@ Type-check: `npx tsc --noEmit`
 
 ## Known Issues
 
-- **Double filename in file picker**: selected file names appear both in the native input element and in the custom list below it. Functional, cosmetic fix deferred.
 - **Tickets resolved before July 2026** had their photos deleted on resolve (the old behaviour), so their `media_urls` point at files that no longer exist.
 
 ---
@@ -454,11 +476,12 @@ Type-check: `npx tsc --noEmit`
 7. **App name / branding** — "Student Maintenance Hub" is provisional. Decide on final name, logo, and category icons before launch.
 8. **CSV export** — needed before the first annual purge, so a year's records
    survive without keeping the photos.
-9. **Stats strip** — counts by status, oldest open ticket, most-reported
-   property. Intended to sit alongside the status tabs.
-10. **Duplicate detection** — housemates reporting the same fault produce
-    several tickets for one job. Flag likely duplicates (same property +
-    category within a few days) and allow merging.
+9. ~~Stats strip~~ — status counts now sit on the tabs. Oldest-open and
+   most-reported-property were dropped as unactionable; add later if asked.
+10. **Merging duplicates** — the related-reports panel surfaces them, but
+    handling one is still manual (note it, then bin or resolve). A single
+    "merge into" action could do both, and decide what the duplicate's tenant
+    gets told.
 11. **Email failures are silent** — `api/submit` never checks the Resend
     response, so a failed tenant confirmation goes unnoticed. Log it and surface
     it on the ticket.
