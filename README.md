@@ -260,8 +260,8 @@ Features:
 - **Search**: matches reference, tenant name, room, address, category,
   description, private notes, and the report date — "July", "Jul", "29/07",
   "29 July" and "2026" all work
-- **Filters**: property, category, sent status (not sent yet / already sent), and
-  date (last 7d / last 30d / older than 6 months / older than 1 year / all)
+- **Filters**: property, category, and date
+  (last 7d / last 30d / older than 6 months / older than 1 year / all)
 - **Sort**: click a desktop column header to sort by tenant, property, status,
   sent or age; mobile gets a sort dropdown instead
 - **Ticket age** is shown on every row and turns red once an unresolved ticket
@@ -275,8 +275,7 @@ Features:
   - **Private notes** — free-text box saved per ticket; tickets with notes show 📝
   - Tenant email and phone are `mailto:` / `tel:` links
   - **Move to bin** (with confirmation) — soft delete, recoverable for 30 days
-  - **Copy details** — clipboard-formatted text for handyman (property + room, issue, details, tenant name + phone — no email)
-  - **WhatsApp** — opens WhatsApp with details pre-filled (single ticket)
+  - **Send to handyman** — opens WhatsApp with this one ticket pre-filled
   - **Attachments** — images open in full-screen lightbox; HEIC/unsupported shows download button
 
 ### The bin
@@ -328,12 +327,15 @@ prompts and button colours live in `BULK_CONFIRM` in `TicketTable.tsx`.
 
 The handyman visits roughly fortnightly, so the routine before a visit is:
 
-1. Status tab **Open**, sent filter **Not sent yet**
+1. Status tab **Open**, click the **Sent** column to bring unsent to the top
 2. Header checkbox to select them all
 3. **Send** — one WhatsApp message, grouped by property
 
-After the visit, filter to **Already sent** and bulk **Resolve** whatever got
-done. Anything still showing had to wait, and its age keeps climbing.
+Selecting tickets that have already gone out is fine: the send asks first and
+offers **Send N new** (skipping the duplicates) or **Send all N** (deliberate
+re-send, e.g. the handyman lost the message). It never re-sends silently.
+
+After the visit, bulk **Resolve** whatever got done.
 
 ### Sending jobs to the handyman (batched)
 
@@ -385,7 +387,7 @@ The admin pages use a separate manifest (`/admin-manifest.webmanifest`) with `st
 | Trigger | Recipient | Content |
 |---|---|---|
 | Any submission | Tenant | Reference, issue summary, link to confirmation page |
-| Emergency submission | Landlady (`LANDLORD_EMAIL`) | Urgent red-header email with full tenant + issue details, link to dashboard |
+| Emergency submission | Landlady (`LANDLORD_EMAIL`) | Urgent red-header email with full tenant + issue details, the tenant's photos inline, and a link to the dashboard |
 
 **Sandbox limitation:** Using `onboarding@resend.dev`. Only delivers to verified addresses in Resend. Needs a real sending domain to reach any student email.
 
