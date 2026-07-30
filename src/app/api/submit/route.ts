@@ -5,6 +5,23 @@ import { createAdminClient } from "@/utils/supabase/admin";
 const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://appliance-helper-self.vercel.app";
 
+/** Photos inline, videos as links — mail clients won't play video. */
+function mediaBlock(urls: string[]) {
+  if (urls.length === 0) return "";
+
+  const items = urls
+    .map((url) => {
+      const ext = url.split(".").pop()?.toLowerCase() ?? "";
+      if (["mp4", "mov", "avi", "webm", "mkv"].includes(ext)) {
+        return `<p style="margin: 0 0 8px;"><a href="${url}" style="color: #1d4ed8;">▶ View video</a></p>`;
+      }
+      return `<a href="${url}"><img src="${url}" alt="" style="max-width: 100%; border-radius: 6px; margin-bottom: 8px; display: block;" /></a>`;
+    })
+    .join("");
+
+  return `<div style="margin-top: 16px;"><p style="margin: 0 0 8px; font-weight: 600;">Photos from the tenant:</p>${items}</div>`;
+}
+
 function generateReference() {
   const year = new Date().getFullYear();
   const num = Math.floor(10000 + Math.random() * 90000);
@@ -100,6 +117,7 @@ export async function POST(request: NextRequest) {
               ${tenant_phone ? `<p style="margin: 0;"><strong>Phone:</strong> ${tenant_phone}</p>` : ""}
             </div>
             ${description ? `<div style="margin-top: 16px;"><p style="margin: 0 0 6px; font-weight: 600;">Additional details:</p><p style="background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin: 0;">${description}</p></div>` : ""}
+            ${mediaBlock(media_urls)}
             <p style="color: #6b7280; font-size: 13px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
               View full details in the <a href="${APP_URL}/admin/dashboard" style="color: #1d4ed8;">admin dashboard</a>.
             </p>

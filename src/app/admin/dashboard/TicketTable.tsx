@@ -134,12 +134,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
   const [bulkLoading, setBulkLoading] = useState<string | null>(null);
   const [confirmBulk, setConfirmBulk] = useState<BulkAction | null>(null);
+  const [sendConflict, setSendConflict] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaved, setNoteSaved] = useState(false);
 
@@ -148,7 +148,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [filterProperty, setFilterProperty] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [search, setSearch] = useState("");
-  const [filterSent, setFilterSent] = useState("all");
   const [sort, setSort] = useState("created-desc");
 
   const uniqueProperties = [...new Set(tickets.map((t) => t.property_address))].sort();
@@ -162,8 +161,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       if (!inBin && filterStatus !== "all" && t.status !== filterStatus) return false;
       if (filterProperty !== "all" && t.property_address !== filterProperty) return false;
       if (filterCategory !== "all" && t.category !== filterCategory) return false;
-      if (filterSent === "sent" && !t.sent_to_handyman_at) return false;
-      if (filterSent === "unsent" && t.sent_to_handyman_at) return false;
       if (search) {
         const created = new Date(t.created_at);
         const haystack = [
@@ -209,15 +206,13 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
 
   const hasActiveFilters =
     filterStatus !== "all" || filterDate !== "all" || filterProperty !== "all" ||
-    filterCategory !== "all" || filterSent !== "all" || search !== "" ||
-    sort !== "created-desc";
+    filterCategory !== "all" || search !== "" || sort !== "created-desc";
 
   const clearFilters = () => {
     setFilterStatus("all");
     setFilterDate("all");
     setFilterProperty("all");
     setFilterCategory("all");
-    setFilterSent("all");
     setSearch("");
     setSort("created-desc");
   };
@@ -266,12 +261,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       .filter((l) => l !== null)
       .join("\n");
 
-  const copyForHandyman = (ticket: Ticket) => {
-    navigator.clipboard.writeText(formatHandymanText(ticket));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const whatsappForHandyman = (ticket: Ticket) => {
     const text = encodeURIComponent(formatHandymanText(ticket));
     window.open(`https://wa.me/?text=${text}`, "_blank");
@@ -316,8 +305,19 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     return lines.join("\n");
   };
 
-  const sendBatchToHandyman = async () => {
-    const chosen = tickets.filter((t) => selectedIds.has(t.id));
+  const selectedTickets = tickets.filter((t) => selectedIds.has(t.id));
+  const alreadySentCount = selectedTickets.filter((t) => t.sent_to_handyman_at).length;
+
+  /** Re-sending is allowed but never silent — the handyman would just get it twice. */
+  const requestSend = () => {
+    if (alreadySentCount > 0) setSendConflict(true);
+    else sendBatchToHandyman();
+  };
+
+  const sendBatchToHandyman = async (onlyUnsent = false) => {
+    const chosen = onlyUnsent
+      ? selectedTickets.filter((t) => !t.sent_to_handyman_at)
+      : selectedTickets;
     if (chosen.length === 0) return;
 
     setSending(true);
@@ -340,6 +340,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       "_blank"
     );
     setSelectedIds(new Set());
+    setSendConflict(false);
     router.refresh();
   };
 
@@ -373,6 +374,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const clearSelection = () => {
     setSelectedIds(new Set());
     setConfirmBulk(null);
+    setSendConflict(false);
   };
 
   const saveNote = async (reference: string) => {
@@ -552,18 +554,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
         </div>
       )}
 
-      <div className={`mt-1 gap-2 ${ticket.deleted_at ? "hidden" : "flex"}`}>
-        <button
-          onClick={() => copyForHandyman(ticket)}
-          className="flex-1 bg-gray-50 border border-gray-200 text-gray-600 rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-100 transition-colors"
-        >
-          {copied ? "Copied ✓" : "Copy details"}
-        </button>
+      <div className={`mt-1 ${ticket.deleted_at ? "hidden" : "block"}`}>
         <button
           onClick={() => whatsappForHandyman(ticket)}
-          className="flex-1 bg-[#25D366] text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-[#1ebe5d] transition-colors"
+          className="w-full bg-[#25D366] text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-[#1ebe5d] transition-colors"
         >
-          WhatsApp
+          Send to handyman
         </button>
       </div>
 
@@ -642,7 +638,39 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       {selectedIds.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg px-5 py-3">
           <div className="max-w-5xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            {confirmBulk ? (
+            {sendConflict ? (
+              <>
+                <span className="text-sm text-gray-700">
+                  {alreadySentCount === selectedTickets.length
+                    ? `${alreadySentCount === 1 ? "This has" : "These have"} already been sent — send again?`
+                    : `${alreadySentCount} of ${selectedTickets.length} already sent to the handyman.`}
+                </span>
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2 shrink-0">
+                  <button
+                    onClick={() => setSendConflict(false)}
+                    className="border border-gray-300 text-gray-600 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  {alreadySentCount < selectedTickets.length && (
+                    <button
+                      onClick={() => sendBatchToHandyman(true)}
+                      disabled={sending}
+                      className="bg-[#25D366] text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-[#1ebe5d] disabled:opacity-50"
+                    >
+                      Send {selectedTickets.length - alreadySentCount} new
+                    </button>
+                  )}
+                  <button
+                    onClick={() => sendBatchToHandyman(false)}
+                    disabled={sending}
+                    className="border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    {sending ? "Preparing..." : `Send all ${selectedTickets.length}`}
+                  </button>
+                </div>
+              </>
+            ) : confirmBulk ? (
               <>
                 <span className="text-sm text-gray-700">
                   {BULK_CONFIRM[confirmBulk].prompt(selectedIds.size)}
@@ -724,7 +752,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                         </button>
                       )}
                       <button
-                        onClick={sendBatchToHandyman}
+                        onClick={requestSend}
                         disabled={sending}
                         className="bg-[#25D366] text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-[#1ebe5d] disabled:opacity-50 transition-colors"
                       >
@@ -815,15 +843,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               {DATE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
-            </select>
-            <select
-              value={filterSent}
-              onChange={(e) => setFilterSent(e.target.value)}
-              className="w-full md:w-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Sent &amp; not sent</option>
-              <option value="unsent">Not sent yet</option>
-              <option value="sent">Already sent</option>
             </select>
             {/* Desktop sorts via the column headers, so this is mobile-only. */}
             <select
