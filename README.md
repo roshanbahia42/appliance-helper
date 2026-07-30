@@ -272,34 +272,24 @@ Features:
 - Detail panel includes:
   - Tenant name, room, email, phone, property, category, description
   - **Mark resolved** / **Escalate** / **Reopen** status buttons
-  - **Other reports at this property** — see below
   - **Private notes** — free-text box saved per ticket; tickets with notes show 📝
   - Tenant email and phone are `mailto:` / `tel:` links
   - **Move to bin** (with confirmation) — soft delete, recoverable for 30 days
   - **Send to handyman** — opens WhatsApp with this one ticket pre-filled
   - **Attachments** — images open in full-screen lightbox; HEIC/unsupported shows download button
 
-### Spotting duplicates
+### Duplicates — handled by grouping, not by a feature
 
-Housemates sharing a boiler produce several tickets for one job. The detail panel
-lists every other report at the same address within 14 days
-(`RELATED_WINDOW_DAYS`), newest first, showing reference, room, category, age and
-status. **Note as duplicate** writes `Duplicate of <ref>` into the notes so the
-reference never has to be typed out.
+Housemates sharing a boiler produce several tickets for one job. A
+related-reports panel was built for this and then removed: it fired on
+same-property-within-14-days regardless of category, so in a shared house it
+triggered on most tickets, and judging a duplicate needs the other ticket's
+photos and description, which a summary line can't provide.
 
-Two deliberate choices:
-
-- **It ignores category.** Housemates file the same fault under different ones —
-  "Heating — No hot water" and "Plumbing — Boiler issue" are the same boiler.
-  Matching on category would miss exactly the cases worth catching.
-- **It never says "duplicate".** It reports what else is happening at that
-  address and leaves the judgement alone. Two different showers leaking in a
-  six-bed house look identical to one shower reported twice, and wrongly merging
-  them means a real fault never gets fixed — a worse outcome than a duplicate
-  line on a job sheet.
-
-Resolved tickets are included on purpose: something reported, fixed, then
-reported again isn't a duplicate, it's a repair that didn't hold.
+The job sheet already groups by property, so duplicates arrive as adjacent lines
+in the WhatsApp message — visible at the moment they matter, with no UI. The cost
+of one slipping through is a line the handyman ignores; the cost of wrongly
+merging two real faults is one never getting fixed. Grouping is the better trade.
 
 ### The bin
 
@@ -478,10 +468,9 @@ Type-check: `npx tsc --noEmit`
    survive without keeping the photos.
 9. ~~Stats strip~~ — status counts now sit on the tabs. Oldest-open and
    most-reported-property were dropped as unactionable; add later if asked.
-10. **Merging duplicates** — the related-reports panel surfaces them, but
-    handling one is still manual (note it, then bin or resolve). A single
-    "merge into" action could do both, and decide what the duplicate's tenant
-    gets told.
+10. ~~Duplicate detection~~ — built, then removed as more noise than help. See
+    "Duplicates" above. Revisit only if property grouping proves insufficient in
+    practice.
 11. **Email failures are silent** — `api/submit` never checks the Resend
     response, so a failed tenant confirmation goes unnoticed. Log it and surface
     it on the ticket.
