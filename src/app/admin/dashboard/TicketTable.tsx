@@ -155,10 +155,9 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
 
   const inBin = filterStatus === "bin";
 
-  const filtered = tickets
-    .filter((t) => {
-      if (inBin !== !!t.deleted_at) return false;
-      if (!inBin && filterStatus !== "all" && t.status !== filterStatus) return false;
+  // Everything except status, so the tab counts can reflect the other filters.
+  const matchesFilters = (t: Ticket) => {
+    {
       if (filterProperty !== "all" && t.property_address !== filterProperty) return false;
       if (filterCategory !== "all" && t.category !== filterCategory) return false;
       if (search) {
@@ -194,6 +193,22 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
         if (mode === "older" && created > cutoff) return false;
       }
       return true;
+    }
+  };
+
+  const statusCounts = {
+    all: tickets.filter((t) => !t.deleted_at && matchesFilters(t)).length,
+    open: tickets.filter((t) => !t.deleted_at && t.status === "open" && matchesFilters(t)).length,
+    escalated: tickets.filter((t) => !t.deleted_at && t.status === "escalated" && matchesFilters(t)).length,
+    resolved: tickets.filter((t) => !t.deleted_at && t.status === "resolved" && matchesFilters(t)).length,
+    bin: tickets.filter((t) => !!t.deleted_at && matchesFilters(t)).length,
+  } as Record<string, number>;
+
+  const filtered = tickets
+    .filter((t) => {
+      if (inBin !== !!t.deleted_at) return false;
+      if (!inBin && filterStatus !== "all" && t.status !== filterStatus) return false;
+      return matchesFilters(t);
     })
     .sort((a, b) => {
       const [field, direction] = sort.split("-");
@@ -801,7 +816,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     : "bg-white border border-gray-300 text-gray-600 hover:border-blue-400"
                 } ${f === "bin" ? "ml-auto" : ""}`}
               >
-                {f === "bin" ? "🗑 Bin" : f}
+                {f === "bin" ? "🗑" : f}
+                <span
+                  className={`ml-1.5 text-xs ${filterStatus === f ? "text-white/70" : "text-gray-400"}`}
+                >
+                  {statusCounts[f]}
+                </span>
               </button>
             ))}
           </div>
