@@ -464,6 +464,12 @@ Type-check: `npx tsc --noEmit`
     it on the ticket.
 12. **Handyman job completion** — the job sheet is read-only. Could later let the
    handyman tick jobs off, which would flow back to the dashboard.
+13. **Handyman message wording** — body text of the WhatsApp message needs a pass.
+    No infrastructure change; edit `formatBatchText` in `TicketTable.tsx`.
+14. **Does `escalated` earn its place?** — with the ✓ recording dispatch, the only
+    job left for `escalated` is "can't wait for the fortnightly round". Landlady
+    to confirm she'd use it. If not, statuses collapse to open/resolved and
+    emergency submissions would need somewhere else to signal urgency.
 
 ---
 
