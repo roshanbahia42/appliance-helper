@@ -595,37 +595,53 @@ export default function Home() {
                 <p className="text-xs text-slate-400 mb-2">
                   Up to 5 files. Videos must be under 25MB — photos are compressed automatically.
                 </p>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  onChange={(e) => {
-                    const picked = Array.from(e.target.files ?? []);
-                    // Clearing lets the camera be used repeatedly (otherwise the
-                    // second shot replaces the first) and stops the native label
-                    // duplicating the list we render below.
-                    e.target.value = "";
-                    if (picked.length === 0) return;
+                {/* The native input is hidden: because we clear its value after
+                    every pick, its own "No file chosen" label would always read
+                    empty even with files staged. The list below is the truth. */}
+                <label
+                  className={`inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                    files.length >= MAX_FILES
+                      ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                      : "bg-[#0f2044] text-white hover:bg-blue-900 cursor-pointer"
+                  }`}
+                >
+                  {files.length === 0
+                    ? "Choose photos or videos"
+                    : files.length >= MAX_FILES
+                      ? `${MAX_FILES} files added`
+                      : `Add more (${files.length}/${MAX_FILES})`}
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    disabled={files.length >= MAX_FILES}
+                    onChange={(e) => {
+                      const picked = Array.from(e.target.files ?? []);
+                      // Clearing lets the camera be used repeatedly — otherwise
+                      // the second shot replaces the first.
+                      e.target.value = "";
+                      if (picked.length === 0) return;
 
-                    const oversized = picked.filter(
-                      (f) => f.size > (isVideo(f) ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)
-                    );
-                    if (oversized.length > 0) {
-                      setError(
-                        `${oversized.map((f) => f.name).join(", ")} is too large — videos must be under 25MB, photos under 50MB`
+                      const oversized = picked.filter(
+                        (f) => f.size > (isVideo(f) ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)
                       );
-                      return;
-                    }
+                      if (oversized.length > 0) {
+                        setError(
+                          `${oversized.map((f) => f.name).join(", ")} is too large — videos must be under 25MB, photos under 50MB`
+                        );
+                        return;
+                      }
 
-                    const seen = new Set(files.map(fileKey));
-                    const combined = [...files, ...picked.filter((f) => !seen.has(fileKey(f)))];
-                    setError(
-                      combined.length > MAX_FILES ? `You can attach up to ${MAX_FILES} files` : ""
-                    );
-                    setFiles(combined.slice(0, MAX_FILES));
-                  }}
-                  className="w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#0f2044] file:text-white hover:file:bg-blue-900 file:cursor-pointer"
-                />
+                      const seen = new Set(files.map(fileKey));
+                      const combined = [...files, ...picked.filter((f) => !seen.has(fileKey(f)))];
+                      setError(
+                        combined.length > MAX_FILES ? `You can attach up to ${MAX_FILES} files` : ""
+                      );
+                      setFiles(combined.slice(0, MAX_FILES));
+                    }}
+                    className="hidden"
+                  />
+                </label>
               </div>
               {files.length > 0 && (
                 <ul className="flex flex-col gap-1">
