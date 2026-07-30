@@ -28,3 +28,16 @@ body {
 button {
   cursor: pointer;
 }
+
+/* iOS Safari zooms the viewport when a form control smaller than 16px receives
+   focus, and never zooms back out — so the rest of the flow is left scrolled
+   sideways. Forcing 16px on small screens is the only fix that doesn't involve
+   disabling pinch-zoom, which people rely on. !important because it has to beat
+   Tailwind's text-sm on the elements themselves. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
