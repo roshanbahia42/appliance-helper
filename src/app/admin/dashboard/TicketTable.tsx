@@ -40,11 +40,6 @@ const STATUS_COLORS: Record<string, string> = {
 // reasonable time, measured from when the tenant reported it.
 const STALE_AFTER_DAYS = 14;
 
-// How far either side of a ticket to look for other reports at the same address.
-// Deliberately ignores category: housemates file the same fault under different
-// ones, and judging what's actually a duplicate is left to the reader.
-const RELATED_WINDOW_DAYS = 14;
-
 function ageInDays(createdAt: string) {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
 }
@@ -409,77 +404,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     router.refresh();
   };
 
-  const relatedFor = (ticket: Ticket) =>
-    tickets
-      .filter(
-        (t) =>
-          !t.deleted_at &&
-          t.id !== ticket.id &&
-          t.property_address === ticket.property_address &&
-          Math.abs(
-            new Date(t.created_at).getTime() - new Date(ticket.created_at).getTime()
-          ) <=
-            RELATED_WINDOW_DAYS * 86_400_000
-      )
-      .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
-
-  /** Saves typing out a reference by hand. */
-  const noteDuplicateOf = (reference: string) => {
-    const line = `Duplicate of ${reference}`;
-    setNoteDraft((prev) => {
-      if (prev.includes(line)) return prev;
-      return prev.trim() ? `${prev.trim()}\n${line}` : line;
-    });
-  };
-
   const selectTicket = (ticket: Ticket) => {
     const next = selected?.id === ticket.id ? null : ticket;
     setSelected(next);
     setConfirmDelete(false);
     setNoteDraft(next?.admin_notes ?? "");
     setNoteSaved(false);
-  };
-
-  const renderRelated = (ticket: Ticket) => {
-    const related = relatedFor(ticket);
-    if (related.length === 0) return null;
-
-    return (
-      <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
-        <p className="text-xs font-medium text-amber-900 mb-2">
-          {related.length} other {related.length === 1 ? "report" : "reports"} at this
-          property within {RELATED_WINDOW_DAYS} days
-        </p>
-        <div className="flex flex-col gap-1.5">
-          {related.map((r) => (
-            <div
-              key={r.id}
-              className="bg-white border border-amber-200 rounded-md p-2 flex items-start justify-between gap-2"
-            >
-              <button
-                onClick={() => selectTicket(r)}
-                className="text-left min-w-0 flex-1 text-xs"
-              >
-                <span className="font-mono text-gray-700">{r.reference_number}</span>
-                {r.tenant_room && (
-                  <span className="text-gray-500"> · Room {r.tenant_room}</span>
-                )}
-                <span className="block text-gray-600 truncate">{r.category}</span>
-                <span className="text-gray-400 capitalize">
-                  {formatAge(r.created_at)} · {r.status}
-                </span>
-              </button>
-              <button
-                onClick={() => noteDuplicateOf(r.reference_number)}
-                className="shrink-0 text-xs text-amber-800 border border-amber-300 rounded px-2 py-1 hover:bg-amber-100"
-              >
-                Note as duplicate
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
   };
 
   const renderDetailBody = (ticket: Ticket) => (
@@ -527,8 +457,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
         <span className="text-gray-500 block mb-1">Issue:</span>
         <p className="text-gray-900 bg-gray-50 rounded p-2">{ticket.description}</p>
       </div>
-
-      {renderRelated(ticket)}
 
       <div className="mt-2">
         <span className="text-gray-500 block mb-1">Your notes:</span>
