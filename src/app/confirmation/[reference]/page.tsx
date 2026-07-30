@@ -22,12 +22,9 @@ export default async function ConfirmationPage({
     <div className="min-h-screen bg-slate-50">
       <header className="bg-[#0f2044] px-6 py-8">
         <div className="max-w-xl mx-auto">
-          <a href="/" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 transition-colors mb-3">
-            <svg width="16" height="15" viewBox="0 0 16 15" fill="white" fillOpacity="0.7">
-              <path d="M8 0L0 7h2v8h5v-5h2v5h5V7h2L8 0z"/>
-            </svg>
+          <a href="/" className="inline-block hover:opacity-80 transition-opacity">
+            <h1 className="text-2xl font-bold text-white">Student Maintenance Hub</h1>
           </a>
-          <h1 className="text-2xl font-bold text-white">Student Maintenance Hub</h1>
           <p className="text-blue-200 text-sm mt-1">Request received</p>
         </div>
       </header>

@@ -1,5 +1,9 @@
 export const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 export const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
+export const MAX_FILES = 5;
+
+/** Identity for de-duping picks. Two camera shots share a name but differ here. */
+export const fileKey = (f: File) => `${f.name}-${f.size}-${f.lastModified}`;
 
 const MAX_IMAGE_DIMENSION = 1600;
 const JPEG_QUALITY = 0.8;
