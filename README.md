@@ -35,7 +35,33 @@ RESEND_API_KEY=
 GOOGLE_PLACES_API_KEY=
 LANDLORD_EMAIL=              # currently Roshan's email — change to landlady's before go-live
 NEXT_PUBLIC_APP_URL=https://appliance-helper-self.vercel.app
+RESEND_FROM=                 # e.g. "Maintenance <maintenance@send.example.com>" — see below
+RESEND_REPLY_TO=             # optional: where tenant replies go
 ```
+
+### Setting up real email
+
+Until `RESEND_FROM` points at a verified domain, the app falls back to
+`onboarding@resend.dev`, which **only delivers to addresses verified in the
+Resend account** — so students receive nothing.
+
+1. **Get a domain.** Sending from `vercel.app` isn't possible. Either the
+   landlady's existing business domain or a new one (~£10/year).
+2. **Add it in Resend** → Domains → Add Domain. Use a *subdomain* such as
+   `send.example.com`, so email reputation stays isolated from the main domain.
+3. **Add the DNS records Resend shows** at the registrar — DKIM, SPF, and an MX
+   record for bounce handling. Verification usually takes minutes.
+4. **Add a DMARC record.** Not enforced by Resend, but Gmail and Outlook weight
+   it heavily, and many students will be on university mail with strict
+   filtering. Start with `v=DMARC1; p=none; rua=mailto:you@example.com`.
+5. **Set `RESEND_FROM`** in Vercel, e.g.
+   `Student Maintenance <maintenance@send.example.com>`. No redeploy needed
+   beyond the env change.
+6. **Send a real test** to a Gmail and a university address, and check it isn't
+   in spam.
+
+Email failures are logged to the Vercel function logs (`Email to tenant failed
+for MT-…`) and never fail the submission — the ticket is already saved by then.
 
 ---
 
@@ -465,8 +491,9 @@ Type-check: `npx tsc --noEmit`
 
 1. **Resend real domain** — the sandbox sender only delivers to addresses
    verified in Resend, so **no student currently receives their confirmation
-   email**. Set up a sending domain and update `from` in `api/submit/route.ts`.
-   This is the one item that makes the student-facing half of the app work.
+   email**. Code is ready; it needs a domain, DNS records, and `RESEND_FROM`
+   set in Vercel. See "Setting up real email" above. This is the one item that
+   makes the student-facing half of the app work.
 2. **Rotate API keys** — all keys were exposed in a dev session and should be
    rotated before real data exists.
 3. **Replace `LANDLORD_EMAIL`** in Vercel with the landlady's real address —
@@ -493,9 +520,9 @@ Type-check: `npx tsc --noEmit`
 
 ## Worth doing, unprompted
 
-10. **Email failures are silent** — `api/submit` never checks the Resend
-    response, so a confirmation that failed to send goes unnoticed. Log it and
-    surface it on the ticket.
+10. **Surface email failures in the dashboard** — failures are now logged to
+    Vercel, but the landlady can't see them. A `confirmation_failed` flag on the
+    ticket would let her spot a tenant who never got confirmation.
 11. **Handyman message wording** — copy pass on `formatBatchText` in
     `TicketTable.tsx`. No infrastructure change.
 12. **Handyman job completion** — the job sheet is read-only; letting him tick
