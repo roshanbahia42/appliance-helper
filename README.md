@@ -461,44 +461,50 @@ Type-check: `npx tsc --noEmit`
 
 ---
 
-## Pending / To Do
+## Blocking go-live
 
-1. **Category streamlining** — landlady to confirm which categories/subcategories are relevant to her properties. Agreed to do in one batch.
-2. **Appliance manuals** — property-specific manuals to appear on the troubleshooting tips screen (property is now collected before tips, so the architecture is ready). Needs: appliance inventory per property, DB lookup table (property + category → manual URL), admin upload interface.
-3. **Resend real domain** — sandbox only delivers to verified addresses. Set up a real sending domain in Resend and update `from` in `api/submit/route.ts`.
-4. **Replace `LANDLORD_EMAIL`** — change in Vercel env vars to landlady's real address.
-5. **Rotate API keys** — all keys should be rotated before go-live (previously exposed in a dev session).
-6. **PWA icons** — placeholder icons in `public/`. Replace with real logo when available; update both `icon-192.png` and `icon-512.png`.
-7. **App name / branding** — "Student Maintenance Hub" is provisional. Decide on final name, logo, and category icons before launch.
-8. **CSV export** — needed before the first annual purge, so a year's records
-   survive without keeping the photos.
-9. ~~Stats strip~~ — status counts now sit on the tabs. Oldest-open and
-   most-reported-property were dropped as unactionable; add later if asked.
-10. ~~Duplicate detection~~ — built, then removed as more noise than help. See
-    "Duplicates" above. Revisit only if property grouping proves insufficient in
-    practice.
-11. **Email failures are silent** — `api/submit` never checks the Resend
-    response, so a failed tenant confirmation goes unnoticed. Log it and surface
-    it on the ticket.
-12. **Handyman job completion** — the job sheet is read-only. Could later let the
-   handyman tick jobs off, which would flow back to the dashboard.
-13. **Handyman message wording** — body text of the WhatsApp message needs a pass.
-    No infrastructure change; edit `formatBatchText` in `TicketTable.tsx`.
-14. **Does `escalated` earn its place?** — with the ✓ recording dispatch, the only
-    job left for `escalated` is "can't wait for the fortnightly round". Landlady
-    to confirm she'd use it. If not, statuses collapse to open/resolved and
-    emergency submissions would need somewhere else to signal urgency.
+1. **Resend real domain** — the sandbox sender only delivers to addresses
+   verified in Resend, so **no student currently receives their confirmation
+   email**. Set up a sending domain and update `from` in `api/submit/route.ts`.
+   This is the one item that makes the student-facing half of the app work.
+2. **Rotate API keys** — all keys were exposed in a dev session and should be
+   rotated before real data exists.
+3. **Replace `LANDLORD_EMAIL`** in Vercel with the landlady's real address —
+   emergency alerts currently go to Roshan.
+4. **PWA icons and app name** — `public/icon-192.png` / `icon-512.png` are
+   placeholders and "Student Maintenance Hub" is provisional.
 
----
+## Waiting on the landlady
 
-## Questions to Ask the Landlady
+5. **Category streamlining** — which categories and subcategories are actually
+   relevant to her properties. To be done in one batch.
+6. **Appliance manuals** — needs her appliance inventory per property, then a
+   lookup table (property + category → manual URL) and an upload interface.
+   Property is already collected before the tips screen, so the flow is ready.
+7. **Does `escalated` earn its place?** — with the ✓ recording dispatch, its only
+   remaining job is "can't wait for the fortnightly round". If she wouldn't use
+   it, statuses collapse to open/resolved and emergency submissions need another
+   way to signal urgency.
+8. **CSV export** — plan agreed (exports the filtered view, handles quoting,
+   Excel formula injection, UTF-8 BOM and ISO dates). Held pending her answer on
+   whether she wants it. Note it preserves the written record only — photo links
+   die with the tickets, so decide before the first changeover, not after.
+9. **Emergency SMS** — email is sent now; does she also want a text?
 
-Batch into one conversation:
+## Worth doing, unprompted
 
-1. **Emergency alerts** — email is sent now; does she also want a text (SMS via Twilio)?
-2. **Appliance manuals** — can she provide PDFs/photos? Which appliances at which properties?
-3. **Appliance inventory** — full list per property (needed to build the manuals feature)
-4. **Her real email address** — to replace `LANDLORD_EMAIL` in Vercel
-5. **Sending domain** — does she have a domain for Resend to send from?
-6. **Logo / branding** — real logo to replace the placeholder house icon and PWA icons
-7. **App name** — final name for the app and admin portal
+10. **Email failures are silent** — `api/submit` never checks the Resend
+    response, so a confirmation that failed to send goes unnoticed. Log it and
+    surface it on the ticket.
+11. **Handyman message wording** — copy pass on `formatBatchText` in
+    `TicketTable.tsx`. No infrastructure change.
+12. **Handyman job completion** — the job sheet is read-only; letting him tick
+    jobs off would flow back to the dashboard.
+
+## Decided against
+
+- ~~Stats strip~~ — status counts sit on the tabs. Oldest-open is just a sort and
+  most-reported-property wasn't actionable.
+- ~~Duplicate detection~~ — built, then removed as more noise than help. See
+  "Duplicates" above.
+- ~~Phone format validation~~ — would silently reject international students.
