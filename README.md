@@ -239,19 +239,25 @@ Step 5 — Tenant details (all fields required):
 - Progress bar correctly reflects visual order for both emergency and non-emergency flows
 - Address search restricted to Birmingham via Google Places `locationRestriction`
 
-### Address search
+### Address search — why you must type the house number first
 
-`api/places` returns each suggestion as `{ text, specific }`. Only `specific`
-results — an actual building — can be submitted. Streets and postcodes come back
-too, marked with "search ›"; selecting one feeds it back as the query so the
-tenant narrows down to their building. Without that distinction, widening the
-search would let someone submit "Tiverton Road, Birmingham" with no house number,
-which is useless to a handyman.
+`api/places` only returns buildings (`street_address`, `premise`, `subpremise`),
+so a tenant has to type "12 Tiverton" rather than "Tiverton Road".
 
-Google Places is good at street names but **not** at UK postcode → full list of
-houses; a postcode may return only the postcode area itself. A dedicated UK
-address API (getAddress.io, Ideal Postcodes, Royal Mail PAF) does that properly
-and is worth the small cost if postcode search turns out to matter.
+Including `route` and `postal_code` was tried so that street and postcode
+searches returned something, and reverted. Google autocomplete **matches text, it
+cannot enumerate** — there is no query meaning "list every house on this street",
+so selecting a street simply returned the same street. It was a dead end, and it
+also risked someone submitting "Tiverton Road, Birmingham" with no house number.
+
+The real issue was discoverability, not capability: nothing told tenants to lead
+with their number, so typing a street name looked broken. The helper text and the
+no-results message now say so explicitly.
+
+**If postcode → house list is genuinely wanted**, it needs a UK PAF-backed API
+(getAddress.io, Ideal Postcodes, Royal Mail PAF direct). Those enumerate properly:
+type `B29 7QW`, get all fourteen houses. A few pounds a month at this volume.
+Google cannot do it at any price.
 
 ---
 
