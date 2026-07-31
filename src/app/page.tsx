@@ -76,7 +76,11 @@ export default function Home() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  // `specific` marks a real building. Streets and postcodes come back too, but
+  // only as something to search within.
+  const [suggestions, setSuggestions] = useState<
+    { text: string; specific: boolean }[]
+  >([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -452,19 +456,32 @@ export default function Home() {
               )}
               {showSuggestions && suggestions.length > 0 && !selectedProperty && (
                 <ul className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
-                  {suggestions.map((p: string) => (
-                    <li key={p}>
+                  {suggestions.map((s) => (
+                    <li key={s.text}>
                       <button
                         type="button"
                         onClick={() => {
-                          setSelectedProperty(p);
-                          setPropertySearch(p);
-                          setShowSuggestions(false);
-                          setSuggestions([]);
+                          if (s.specific) {
+                            setSelectedProperty(s.text);
+                            setPropertySearch(s.text);
+                            setShowSuggestions(false);
+                            setSuggestions([]);
+                          } else {
+                            // A street or postcode — feed it back as the query so
+                            // they can pick their building from it.
+                            setPropertySearch(s.text);
+                            setSelectedProperty("");
+                            fetchSuggestions(s.text);
+                          }
                         }}
-                        className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-blue-50 hover:text-[#0f2044] border-b border-slate-100 last:border-0"
+                        className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-blue-50 hover:text-[#0f2044] border-b border-slate-100 last:border-0 flex items-center justify-between gap-2"
                       >
-                        {p}
+                        <span className="min-w-0 truncate">{s.text}</span>
+                        {!s.specific && (
+                          <span className="shrink-0 text-xs text-slate-400">
+                            search ›
+                          </span>
+                        )}
                       </button>
                     </li>
                   ))}
@@ -476,11 +493,11 @@ export default function Home() {
                 suggestions.length === 0 &&
                 !selectedProperty && (
                   <p className="mt-2 text-xs text-slate-500">
-                    No suggestions found — try a different format, e.g. house number then street name.
+                    No matches — try your street name or postcode, then pick your building from the list.
                   </p>
                 )}
             </div>
-            <p className="text-xs text-slate-400">Start typing your full address and select it from the suggestions.</p>
+            <p className="text-xs text-slate-400">Search by address, street name or postcode, then select your building.</p>
           </div>
           <button
             onClick={() => goTo(history[history.length - 2] === 2 ? 3 : 5)}
