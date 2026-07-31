@@ -20,16 +20,11 @@ export async function GET(request: NextRequest) {
     },
     body: JSON.stringify({
       input,
-      // Routes and postcodes are included so a street name or postcode returns
-      // something. They aren't valid answers on their own — the client uses them
-      // to re-search and narrow down to an actual building.
-      includedPrimaryTypes: [
-        "street_address",
-        "premise",
-        "subpremise",
-        "route",
-        "postal_code",
-      ],
+      // Buildings only. Routes and postcodes were tried and removed: Google
+      // autocomplete matches text, it can't enumerate, so selecting a street
+      // just returns the same street — there's no way to drill into it. Listing
+      // every house in a postcode needs a UK PAF-backed API instead.
+      includedPrimaryTypes: ["street_address", "premise", "subpremise"],
       locationRestriction: {
         circle: {
           center: { latitude: 52.4862, longitude: -1.8904 },
@@ -45,21 +40,11 @@ export async function GET(request: NextRequest) {
 
   const data = await res.json();
 
-  const SPECIFIC = new Set(["street_address", "premise", "subpremise"]);
-
-  const suggestions = (data.suggestions ?? [])
-    .map((s: { placePrediction?: { text?: { text?: string }; types?: string[] } }) => {
-      const text = s.placePrediction?.text?.text ?? "";
-      const types = s.placePrediction?.types ?? [];
-      return {
-        text,
-        // A specific building can be submitted as-is; anything broader is only a
-        // stepping stone. Falls back to "starts with a number" if the API omits
-        // types, which covers most UK addresses.
-        specific: types.length ? types.some((t) => SPECIFIC.has(t)) : /^\d/.test(text),
-      };
-    })
-    .filter((s: { text: string }) => s.text);
+  const suggestions: string[] = (data.suggestions ?? [])
+    .map((s: { placePrediction?: { text?: { text?: string } } }) =>
+      s.placePrediction?.text?.text ?? ""
+    )
+    .filter(Boolean);
 
   return NextResponse.json({ suggestions });
 }
