@@ -5,6 +5,12 @@ import { createAdminClient } from "@/utils/supabase/admin";
 const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://appliance-helper-self.vercel.app";
 
+// onboarding@resend.dev only delivers to addresses verified in the Resend
+// account, so students receive nothing until RESEND_FROM points at a verified
+// domain. Kept as a fallback so local dev still runs without it.
+const FROM = process.env.RESEND_FROM ?? "onboarding@resend.dev";
+const REPLY_TO = process.env.RESEND_REPLY_TO;
+
 /** Photos inline, videos as links — mail clients won't play video. */
 function mediaBlock(urls: string[]) {
   if (urls.length === 0) return "";
@@ -73,7 +79,8 @@ export async function POST(request: NextRequest) {
 
   const emailPromises = [
     resend.emails.send({
-      from: "onboarding@resend.dev",
+      from: FROM,
+      ...(REPLY_TO ? { replyTo: REPLY_TO } : {}),
       to: tenant_email,
       subject: `${isEmergency ? "⚠️ Urgent — " : ""}Maintenance Request Received — ${reference}`,
       html: `
@@ -99,7 +106,8 @@ export async function POST(request: NextRequest) {
   if (isEmergency && process.env.LANDLORD_EMAIL) {
     emailPromises.push(
       resend.emails.send({
-        from: "onboarding@resend.dev",
+        from: FROM,
+        replyTo: tenant_email,
         to: process.env.LANDLORD_EMAIL,
         subject: `⚠️ URGENT maintenance request — ${reference}`,
         html: `
@@ -127,7 +135,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  await Promise.all(emailPromises);
+  // The ticket is already saved, so a failed email must never fail the request —
+  // the student would see an error and submit again, creating a duplicate.
+  // allSettled rather than all, and every outcome is logged: the Resend SDK
+  // returns API errors as values, so they'd otherwise vanish silently.
+  const results = await Promise.allSettled(emailPromises);
+  results.forEach((result, i) => {
+    const label = i === 0 ? "tenant" : "landlady";
+    if (result.status === "rejected") {
+      console.error(`Email to ${label} threw for ${reference}:`, result.reason);
+    } else if (result.value?.error) {
+      console.error(
+        `Email to ${label} failed for ${reference}:`,
+        JSON.stringify(result.value.error)
+      );
+    }
+  });
 
   return NextResponse.json({ reference });
 }
