@@ -22,6 +22,14 @@ interface FormState {
   description: string;
 }
 
+const EMPTY_FORM: FormState = {
+  name: "",
+  room_number: "",
+  email: "",
+  phone: "",
+  description: "",
+};
+
 function ProgressBar({ step }: { step: Step }) {
   return (
     <div className="flex gap-1.5 mt-4">
@@ -48,7 +56,6 @@ function BackButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-
 function UrgentBadge({ label }: { label: string }) {
   return (
     <span className="inline-flex items-center gap-1 bg-red-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full mb-3">
@@ -71,7 +78,7 @@ export default function Home() {
   const [propertySearch, setPropertySearch] = useState("");
   const [selectedProperty, setSelectedProperty] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [form, setForm] = useState<FormState>({ name: "", room_number: "", email: "", phone: "", description: "" });
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [emailError, setEmailError] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -146,6 +153,7 @@ export default function Home() {
     setSelectedProperty("");
     if (input.length < 2) {
       setSuggestions([]);
+      setSuggestionsLoading(false);
       return;
     }
     setSuggestionsLoading(true);
@@ -181,7 +189,6 @@ export default function Home() {
     try {
       setIsUploading(true);
       const mediaUrls = await uploadFiles();
-      setIsUploading(false);
       const res = await fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -200,10 +207,13 @@ export default function Home() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Something went wrong");
+      // Deliberately leaves loading true — the redirect is in flight, and
+      // re-enabling the button here invites a double submission.
       router.push(`/confirmation/${data.reference}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setLoading(false);
+      setIsUploading(false);
     }
   };
 
@@ -232,7 +242,11 @@ export default function Home() {
               setSubcategory(null);
               setPropertySearch("");
               setSelectedProperty("");
-              setForm({ name: "", room_number: "", email: "", phone: "", description: "" });
+              setSuggestions([]);
+              setForm(EMPTY_FORM);
+              setFiles([]);
+              setError("");
+              setEmailError("");
             }}
             className="text-sm text-slate-500 underline text-center"
           >
@@ -662,12 +676,12 @@ export default function Home() {
               </div>
               {files.length > 0 && (
                 <ul className="flex flex-col gap-1">
-                  {files.map((file, i) => (
-                    <li key={i} className="flex items-center justify-between text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+                  {files.map((file) => (
+                    <li key={fileKey(file)} className="flex items-center justify-between text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
                       <span className="truncate">{file.name}</span>
                       <button
                         type="button"
-                        onClick={() => setFiles(files.filter((_, j) => j !== i))}
+                        onClick={() => setFiles(files.filter((f) => fileKey(f) !== fileKey(file)))}
                         className="ml-2 text-slate-400 hover:text-slate-600 shrink-0 text-base leading-none"
                       >
                         ×

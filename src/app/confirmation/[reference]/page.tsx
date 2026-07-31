@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import CloseTicketButton from "./CloseTicketButton";
 
 export default async function ConfirmationPage({
@@ -22,9 +23,9 @@ export default async function ConfirmationPage({
     <div className="min-h-screen bg-slate-50">
       <header className="bg-[#0f2044] px-6 py-8">
         <div className="max-w-xl mx-auto">
-          <a href="/" className="inline-block hover:opacity-80 transition-opacity">
+          <Link href="/" className="inline-block hover:opacity-80 transition-opacity">
             <h1 className="text-2xl font-bold text-white">Student Maintenance Hub</h1>
-          </a>
+          </Link>
           <p className="text-blue-200 text-sm mt-1">Request received</p>
         </div>
       </header>
@@ -77,6 +78,10 @@ export default async function ConfirmationPage({
                 if (isVideo) return <video key={i} src={url} controls className="w-full rounded-lg" />;
                 if (isPreviewable) return (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                    {/* Plain img by choice: these are arbitrary Supabase Storage
+                        URLs, and next/image would need every one whitelisted plus
+                        per-image transform cost for photos shown once. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={url} alt={`Attachment ${i + 1}`} className="w-full rounded-lg" />
                   </a>
                 );

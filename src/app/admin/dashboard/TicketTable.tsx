@@ -165,65 +165,72 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
 
   // Everything except status, so the tab counts can reflect the other filters.
   const matchesFilters = (t: Ticket) => {
-    {
-      if (filterProperty !== "all" && t.property_address !== filterProperty) return false;
-      if (filterCategory !== "all" && t.category !== filterCategory) return false;
-      if (search) {
-        const created = new Date(t.created_at);
-        const haystack = [
-          t.tenant_name,
-          t.tenant_room,
-          t.reference_number,
-          t.property_address,
-          t.category,
-          t.description,
-          t.admin_notes,
-          // Several formats so "July", "Jul", "29/07", "29 July" and "2026" all hit.
-          created.toLocaleDateString("en-GB"),
-          created.toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          }),
-          created.toLocaleDateString("en-GB", { month: "short" }),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!haystack.includes(search.toLowerCase())) return false;
-      }
-      if (filterDate !== "all") {
-        const [mode, days] = filterDate.split("-");
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - Number(days));
-        const created = new Date(t.created_at);
-        if (mode === "recent" && created < cutoff) return false;
-        if (mode === "older" && created > cutoff) return false;
-      }
-      return true;
+    if (filterProperty !== "all" && t.property_address !== filterProperty) return false;
+    if (filterCategory !== "all" && t.category !== filterCategory) return false;
+    if (search) {
+      const created = new Date(t.created_at);
+      const haystack = [
+        t.tenant_name,
+        t.tenant_room,
+        t.reference_number,
+        t.property_address,
+        t.category,
+        t.description,
+        t.admin_notes,
+        // Several formats so "July", "Jul", "29/07", "29 July" and "2026" all hit.
+        created.toLocaleDateString("en-GB"),
+        created.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+        created.toLocaleDateString("en-GB", { month: "short" }),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(search.toLowerCase())) return false;
     }
+    if (filterDate !== "all") {
+      const [mode, days] = filterDate.split("-");
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - Number(days));
+      const created = new Date(t.created_at);
+      if (mode === "recent" && created < cutoff) return false;
+      if (mode === "older" && created > cutoff) return false;
+    }
+    return true;
   };
 
-  const statusCounts = {
-    all: tickets.filter((t) => !t.deleted_at && matchesFilters(t)).length,
-    open: tickets.filter((t) => !t.deleted_at && t.status === "open" && matchesFilters(t)).length,
-    escalated: tickets.filter((t) => !t.deleted_at && t.status === "escalated" && matchesFilters(t)).length,
-    resolved: tickets.filter((t) => !t.deleted_at && t.status === "resolved" && matchesFilters(t)).length,
-  } as Record<string, number>;
+  // One pass, then slice it up. Searching re-formats three dates per ticket, so
+  // running the predicate once per status tab made every keystroke five times
+  // more expensive than it needed to be.
+  const matching = tickets.filter(matchesFilters);
+  const live = matching.filter((t) => !t.deleted_at);
 
-  const filtered = tickets
-    .filter((t) => {
-      if (inBin !== !!t.deleted_at) return false;
-      if (!inBin && filterStatus !== "all" && t.status !== filterStatus) return false;
-      return matchesFilters(t);
-    })
+  const statusCounts: Record<string, number> = {
+    all: live.length,
+    open: live.filter((t) => t.status === "open").length,
+    escalated: live.filter((t) => t.status === "escalated").length,
+    resolved: live.filter((t) => t.status === "resolved").length,
+  };
+
+  const [sortField, sortDirection] = sort.split("-");
+  const sortValue = SORT_VALUES[sortField] ?? SORT_VALUES.created;
+
+  const filtered = (
+    inBin
+      ? matching.filter((t) => t.deleted_at)
+      : filterStatus === "all"
+        ? live
+        : live.filter((t) => t.status === filterStatus)
+  )
+    .slice()
     .sort((a, b) => {
-      const [field, direction] = sort.split("-");
-      const get = SORT_VALUES[field] ?? SORT_VALUES.created;
-      const av = get(a);
-      const bv = get(b);
+      const av = sortValue(a);
+      const bv = sortValue(b);
       if (av === bv) return 0;
-      return (av < bv ? -1 : 1) * (direction === "asc" ? 1 : -1);
+      return (av < bv ? -1 : 1) * (sortDirection === "asc" ? 1 : -1);
     });
 
   const hasActiveFilters =
@@ -617,6 +624,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                   onClick={() => setLightboxUrl(url)}
                   className="w-full rounded-lg overflow-hidden aspect-square"
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={url}
                     alt={`Attachment ${i + 1}`}
@@ -638,6 +646,9 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
           className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4"
           onClick={() => setLightboxUrl(null)}
         >
+          {/* Plain img by choice: arbitrary Supabase Storage URLs, and the
+              onError fallback below depends on the native error event. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={lightboxUrl}
             alt="Attachment"

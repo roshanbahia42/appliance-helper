@@ -110,6 +110,9 @@ export default async function JobSheetPage({
                         if (canPreview) {
                           return (
                             <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                              {/* Plain img by choice: arbitrary Supabase Storage
+                                  URLs that next/image would need whitelisted. */}
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={url}
                                 alt={`Photo ${i + 1}`}

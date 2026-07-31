@@ -57,7 +57,6 @@ export async function POST(request: NextRequest) {
 
   const issueDetail = subcategory ? `${category} — ${subcategory}` : category;
 
-  console.log("Saving to DB...");
   const supabase = createAdminClient();
   const { error: dbError } = await supabase.from("tickets").insert({
     reference_number: reference,
