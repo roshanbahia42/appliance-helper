@@ -149,6 +149,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [sendConflict, setSendConflict] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaved, setNoteSaved] = useState(false);
+  const [showDeliveryNote, setShowDeliveryNote] = useState(false);
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDate, setFilterDate] = useState("all");
@@ -417,6 +418,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     setConfirmDelete(false);
     setNoteDraft(next?.admin_notes ?? "");
     setNoteSaved(false);
+    setShowDeliveryNote(false);
   };
 
   const renderDetailBody = (ticket: Ticket) => (
@@ -431,12 +433,23 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
           {ticket.tenant_email}
         </a>
         {SHOW_DELIVERY_WARNINGS && ticket.confirmation_failed && (
-          <span
-            className="ml-1.5 text-xs text-red-600 whitespace-nowrap"
-            title="Their confirmation email was rejected — they may not know the report was received"
-          >
-            ⚠ not delivered
-          </span>
+          <>
+            {/* Click rather than a title tooltip: native tooltips don't exist on
+                touch and won't re-show reliably on desktop. */}
+            <button
+              onClick={() => setShowDeliveryNote((v) => !v)}
+              className="ml-1.5 text-xs text-red-600 whitespace-nowrap underline decoration-dotted underline-offset-2"
+            >
+              ⚠ not delivered
+            </button>
+            {showDeliveryNote && (
+              <p className="mt-1.5 text-xs text-red-800 bg-red-50 border border-red-100 rounded-md px-2 py-1.5 leading-relaxed">
+                The confirmation email was rejected — the address is probably
+                mistyped. They still saw the on-screen confirmation, so they know
+                the report went through. Use their phone number if you need them.
+              </p>
+            )}
+          </>
         )}
       </div>
       <div>
