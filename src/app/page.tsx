@@ -532,6 +532,7 @@ export default function Home() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Full Name*</label>
                   <input
                     value={form.name}
+                    autoComplete="name"
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
                     placeholder=""
@@ -555,6 +556,8 @@ export default function Home() {
                   <input
                     type="text"
                     value={form.email}
+                    autoComplete="email"
+                    inputMode="email"
                     onChange={(e) => {
                       setForm({ ...form, email: e.target.value });
                       setEmailError("");
@@ -579,6 +582,7 @@ export default function Home() {
                   <input
                     type="tel"
                     value={form.phone}
+                    autoComplete="tel"
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     placeholder=""
                     required
