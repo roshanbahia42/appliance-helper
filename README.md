@@ -97,14 +97,19 @@ src/
       layout.tsx                          # admin layout — links to admin PWA manifest
       login/page.tsx                      # landlady login (Supabase Auth)
       dashboard/
-        page.tsx                          # auth-gated dashboard (server component)
+        page.tsx                          # auth-gated dashboard + automatic bin purge
         DashboardHeader.tsx               # header with ticket count + logout
-        TicketTable.tsx                   # filterable ticket list, mobile-first
+        TicketTable.tsx                   # state, filtering, list views, selection bar
+        TicketDetail.tsx                  # one ticket: details, actions, notes, attachments
+        AttachmentLightbox.tsx            # full-screen viewer with download fallback
   lib/
     categories.ts                         # source of truth: all categories, subcategories, tips
                                           # also contains CONTACTS object with landlady/landlord phone numbers
+    tickets.ts                            # Ticket type + pure logic: age, bin maths, sort/filter
+                                          # config, handyman message formatters
     media.ts                              # browser-side image compression + HEIC→JPEG
     storage.ts                            # shared helpers for deleting ticket media
+middleware.ts                             # refreshes the Supabase session, guards /admin/dashboard
   utils/
     supabase/
       admin.ts                            # service-role client (server only)
@@ -506,6 +511,30 @@ Type-check: `npx tsc --noEmit`
 - **Tickets resolved before July 2026** had their photos deleted on resolve (the old behaviour), so their `media_urls` point at files that no longer exist.
 
 ---
+
+## Known gaps worth a decision
+
+These came out of a full review and are design questions rather than bugs.
+
+**A student can't get back to their ticket.** The reference is only ever shown
+once and in an email that currently never arrives. Closing the tab loses it.
+`/confirmation/<reference>` works for anyone who has the number, so a "check my
+request" box on the home page would be enough.
+
+**Nothing sets expectations.** The confirmation page says the landlady has been
+notified but never says roughly when to expect someone, so a tenant has no idea
+whether silence at day three is normal.
+
+**A photo is required for every report.** Fine for a cracked tile, awkward for no
+hot water, an intermittent noise, or a smell — there is nothing to photograph, so
+the tenant either abandons the form or submits a meaningless picture. Consider
+requiring it only where it helps.
+
+**The landlady has no triage view.** Counts and filters exist, but nothing says
+"these three need you today". Sorting by age gets close.
+
+**The job sheet is fire-and-forget.** Once sent there's no signal back, so the
+only way to know whether work happened is to ask.
 
 ## Blocking go-live
 
