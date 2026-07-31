@@ -2,25 +2,21 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-type Ticket = {
-  id: string;
-  reference_number: string;
-  tenant_name: string;
-  tenant_room: string | null;
-  tenant_email: string;
-  tenant_phone: string | null;
-  property_address: string;
-  category: string;
-  description: string;
-  status: string;
-  media_urls: string[] | null;
-  created_at: string;
-  sent_to_handyman_at: string | null;
-  deleted_at: string | null;
-  admin_notes: string | null;
-  confirmation_failed: boolean | null;
-};
+import {
+  BULK_CONFIRM,
+  DATE_OPTIONS,
+  SORT_OPTIONS,
+  SORT_VALUES,
+  STATUS_COLORS,
+  formatAge,
+  formatBatchText,
+  formatHandymanText,
+  isStale,
+  type BulkAction,
+  type Ticket,
+} from "@/lib/tickets";
+import AttachmentLightbox from "./AttachmentLightbox";
+import TicketDetail from "./TicketDetail";
 
 // Every confirmation currently fails, because RESEND_FROM still points at the
 // sandbox sender that only delivers to verified addresses. The warning would
@@ -28,128 +24,16 @@ type Ticket = {
 // verified sending domain is live — see "Setting up real email" in the README.
 const SHOW_DELIVERY_WARNINGS = true;
 
-const BIN_RETENTION_DAYS = 30;
-
-function daysLeftInBin(deletedAt: string) {
-  const expires = new Date(deletedAt);
-  expires.setDate(expires.getDate() + BIN_RETENTION_DAYS);
-  const days = Math.ceil((expires.getTime() - Date.now()) / 86_400_000);
-  return Math.max(0, days);
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  open: "bg-yellow-100 text-yellow-800",
-  resolved: "bg-green-100 text-green-800",
-  escalated: "bg-red-100 text-red-800",
-};
-
-// Anything unresolved beyond this gets flagged — repairs have to happen within a
-// reasonable time, measured from when the tenant reported it.
-const STALE_AFTER_DAYS = 14;
-
-function ageInDays(createdAt: string) {
-  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
-}
-
-function formatAge(createdAt: string) {
-  const days = ageInDays(createdAt);
-  if (days === 0) return "Today";
-  if (days === 1) return "1 day";
-  return `${days} days`;
-}
-
-function isStale(ticket: { created_at: string; status: string }) {
-  return ticket.status !== "resolved" && ageInDays(ticket.created_at) >= STALE_AFTER_DAYS;
-}
-
-type BulkAction = "delete" | "purge" | "resolve" | "reopen" | "restore" | "escalate";
-
-// Every bulk action confirms first. Even restore: an accidental one scatters
-// tickets back among hundreds of others with no easy way to find them again.
-const BULK_CONFIRM: Record<
-  string,
-  { prompt: (n: number) => string; label: string; loading: string; className: string }
-> = {
-  delete: {
-    prompt: (n) => `Move ${n} ${n === 1 ? "ticket" : "tickets"} to the bin?`,
-    label: "Yes, move to bin",
-    loading: "Moving...",
-    className: "bg-red-600 hover:bg-red-700",
-  },
-  purge: {
-    prompt: (n) =>
-      `Delete ${n} ${n === 1 ? "ticket" : "tickets"} permanently? This cannot be undone.`,
-    label: "Yes, delete",
-    loading: "Deleting...",
-    className: "bg-red-600 hover:bg-red-700",
-  },
-  resolve: {
-    prompt: (n) => `Mark ${n} ${n === 1 ? "ticket" : "tickets"} as resolved?`,
-    label: "Yes, resolve",
-    loading: "Saving...",
-    className: "bg-green-600 hover:bg-green-700",
-  },
-  reopen: {
-    prompt: (n) => `Reopen ${n} ${n === 1 ? "ticket" : "tickets"}?`,
-    label: "Yes, reopen",
-    loading: "Reopening...",
-    className: "bg-blue-600 hover:bg-blue-700",
-  },
-  restore: {
-    prompt: (n) => `Restore ${n} ${n === 1 ? "ticket" : "tickets"} from the bin?`,
-    label: "Yes, restore",
-    loading: "Restoring...",
-    className: "bg-blue-600 hover:bg-blue-700",
-  },
-  escalate: {
-    prompt: (n) => `Flag ${n} ${n === 1 ? "ticket" : "tickets"} as urgent?`,
-    label: "Yes, escalate",
-    loading: "Escalating...",
-    className: "bg-red-600 hover:bg-red-700",
-  },
-};
-
-const SORT_OPTIONS = [
-  { label: "Newest first", value: "created-desc" },
-  { label: "Oldest first", value: "created-asc" },
-  { label: "Tenant A–Z", value: "tenant-asc" },
-  { label: "Property A–Z", value: "property-asc" },
-  { label: "Status", value: "status-asc" },
-  { label: "Not sent first", value: "sent-asc" },
-];
-
-const SORT_VALUES: Record<string, (t: Ticket) => string | number> = {
-  created: (t) => new Date(t.created_at).getTime(),
-  tenant: (t) => t.tenant_name.toLowerCase(),
-  property: (t) => t.property_address.toLowerCase(),
-  status: (t) => t.status,
-  sent: (t) => (t.sent_to_handyman_at ? 1 : 0),
-};
-
-// "recent-N" keeps tickets from the last N days; "older-N" keeps ones from before
-// then — the latter is what makes an end-of-year clear-out possible.
-const DATE_OPTIONS = [
-  { label: "All time", value: "all" },
-  { label: "Last 7 days", value: "recent-7" },
-  { label: "Last 30 days", value: "recent-30" },
-  { label: "Older than 6 months", value: "older-183" },
-  { label: "Older than 1 year", value: "older-365" },
-];
-
 export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
   const [bulkLoading, setBulkLoading] = useState<string | null>(null);
   const [confirmBulk, setConfirmBulk] = useState<BulkAction | null>(null);
   const [sendConflict, setSendConflict] = useState(false);
-  const [noteDraft, setNoteDraft] = useState("");
-  const [noteSaved, setNoteSaved] = useState(false);
-  const [showDeliveryNote, setShowDeliveryNote] = useState(false);
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDate, setFilterDate] = useState("all");
@@ -266,7 +150,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     await fetch(`/api/tickets/${reference}/${action}`, { method: "POST" });
     setActionLoading(null);
     setSelected(null);
-    setConfirmDelete(false);
     router.refresh();
   };
 
@@ -277,18 +160,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     setSelected(null);
     router.refresh();
   };
-
-  const formatHandymanText = (ticket: Ticket) =>
-    [
-      `Property: ${ticket.property_address}${ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}`,
-      `Issue: ${ticket.category}`,
-      ticket.description ? `Details: ${ticket.description}` : null,
-      (ticket.media_urls?.length ?? 0) > 0
-        ? `\nPhotos/videos:\n${ticket.media_urls!.join("\n")}`
-        : null,
-    ]
-      .filter((l) => l !== null)
-      .join("\n");
 
   const whatsappForHandyman = (ticket: Ticket) => {
     const text = encodeURIComponent(formatHandymanText(ticket));
@@ -314,24 +185,6 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
       else filtered.forEach((t) => next.add(t.id));
       return next;
     });
-  };
-
-  const formatBatchText = (chosen: Ticket[], url: string) => {
-    const byProperty = chosen.reduce<Record<string, Ticket[]>>((acc, t) => {
-      (acc[t.property_address] ??= []).push(t);
-      return acc;
-    }, {});
-
-    const lines = [`Hi, ${chosen.length} ${chosen.length === 1 ? "job" : "jobs"}:`, ""];
-    for (const address of Object.keys(byProperty).sort()) {
-      lines.push(address);
-      for (const t of byProperty[address]) {
-        lines.push(`• ${t.tenant_room ? `Room ${t.tenant_room} — ` : ""}${t.category}`);
-      }
-      lines.push("");
-    }
-    lines.push(`Full details + photos: ${url}`);
-    return lines.join("\n");
   };
 
   const selectedTickets = tickets.filter((t) => selectedIds.has(t.id));
@@ -406,283 +259,31 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     setSendConflict(false);
   };
 
-  const saveNote = async (reference: string) => {
+  const saveNote = async (reference: string, notes: string) => {
     setActionLoading("note");
     await fetch(`/api/tickets/${reference}/notes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes: noteDraft }),
+      body: JSON.stringify({ notes }),
     });
     setActionLoading(null);
-    setNoteSaved(true);
-    setTimeout(() => setNoteSaved(false), 2000);
     router.refresh();
   };
 
   const selectTicket = (ticket: Ticket) => {
-    const next = selected?.id === ticket.id ? null : ticket;
-    setSelected(next);
-    setConfirmDelete(false);
-    setNoteDraft(next?.admin_notes ?? "");
-    setNoteSaved(false);
-    setShowDeliveryNote(false);
+    setSelected(selected?.id === ticket.id ? null : ticket);
   };
 
-  const renderDetailBody = (ticket: Ticket) => (
-    <div className="flex flex-col gap-2 text-sm">
-      <div><span className="text-gray-500">Tenant: </span><span className="text-gray-900">{ticket.tenant_name}{ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}</span></div>
-      <div>
-        <span className="text-gray-500">Email: </span>
-        <a
-          href={`mailto:${ticket.tenant_email}?subject=${encodeURIComponent(`Maintenance request ${ticket.reference_number}`)}`}
-          className="text-blue-700 hover:underline break-all"
-        >
-          {ticket.tenant_email}
-        </a>
-        {SHOW_DELIVERY_WARNINGS && ticket.confirmation_failed && (
-          <>
-            {/* Click rather than a title tooltip: native tooltips don't exist on
-                touch and won't re-show reliably on desktop. */}
-            <button
-              onClick={() => setShowDeliveryNote((v) => !v)}
-              className="ml-1.5 text-xs text-red-600 whitespace-nowrap underline decoration-dotted underline-offset-2"
-            >
-              ⚠ not delivered
-            </button>
-            {showDeliveryNote && (
-              <p className="mt-1.5 text-xs text-red-800 bg-red-50 border border-red-100 rounded-md px-2 py-1.5">
-                Confirmation email failed — likely a typo.
-              </p>
-            )}
-          </>
-        )}
-      </div>
-      <div>
-        <span className="text-gray-500">Phone: </span>
-        {ticket.tenant_phone ? (
-          <a
-            href={`tel:${ticket.tenant_phone.replace(/\s/g, "")}`}
-            className="text-blue-700 hover:underline"
-          >
-            {ticket.tenant_phone}
-          </a>
-        ) : (
-          <span className="text-gray-900">Not provided</span>
-        )}
-      </div>
-      <div><span className="text-gray-500">Property: </span><span className="text-gray-900">{ticket.property_address}</span></div>
-      <div><span className="text-gray-500">Category: </span><span className="text-gray-900">{ticket.category}</span></div>
-      <div>
-        <span className="text-gray-500">Reported: </span>
-        <span className={isStale(ticket) ? "text-red-600 font-medium" : "text-gray-900"}>
-          {new Date(ticket.created_at).toLocaleDateString()} · {formatAge(ticket.created_at)} ago
-        </span>
-      </div>
-      <div>
-        <span className="text-gray-500">Sent to handyman: </span>
-        <span className={ticket.sent_to_handyman_at ? "text-green-700 font-medium" : "text-gray-400"}>
-          {ticket.sent_to_handyman_at
-            ? new Date(ticket.sent_to_handyman_at).toLocaleDateString()
-            : "Not yet"}
-        </span>
-      </div>
-      <div className="mt-2">
-        <span className="text-gray-500 block mb-1">Issue:</span>
-        <p className="text-gray-900 bg-gray-50 rounded p-2">{ticket.description}</p>
-      </div>
-
-      <div className="mt-2">
-        <span className="text-gray-500 block mb-1">Your notes:</span>
-        <textarea
-          value={noteDraft}
-          onChange={(e) => setNoteDraft(e.target.value)}
-          rows={3}
-          placeholder="Private — only you can see this"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-        />
-        {noteDraft !== (ticket.admin_notes ?? "") && (
-          <button
-            onClick={() => saveNote(ticket.reference_number)}
-            disabled={actionLoading === "note"}
-            className="mt-1 w-full bg-gray-100 border border-gray-200 text-gray-700 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-gray-200 disabled:opacity-50"
-          >
-            {actionLoading === "note" ? "Saving..." : "Save note"}
-          </button>
-        )}
-        {noteSaved && <p className="mt-1 text-xs text-green-600 text-center">Note saved</p>}
-      </div>
-
-      {ticket.deleted_at && (
-        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <p className="text-xs text-amber-900">
-            In the bin — deleted permanently in {daysLeftInBin(ticket.deleted_at)}{" "}
-            {daysLeftInBin(ticket.deleted_at) === 1 ? "day" : "days"}.
-          </p>
-          <div className="flex gap-2 mt-2">
-            <button
-              onClick={() => binTicket(ticket.reference_number, "restore")}
-              disabled={!!actionLoading}
-              className="flex-1 bg-white border border-amber-300 text-amber-900 rounded-lg px-3 py-2 text-xs font-medium hover:bg-amber-100 disabled:opacity-50"
-            >
-              {actionLoading === "restore" ? "Restoring..." : "Restore"}
-            </button>
-            <button
-              onClick={() => binTicket(ticket.reference_number, "purge")}
-              disabled={!!actionLoading}
-              className="flex-1 bg-red-600 text-white rounded-lg px-3 py-2 text-xs font-medium hover:bg-red-700 disabled:opacity-50"
-            >
-              {actionLoading === "purge" ? "Deleting..." : "Delete now"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className={`mt-4 flex-col gap-2 ${ticket.deleted_at ? "hidden" : "flex"}`}>
-        {ticket.status !== "resolved" && (
-          <button
-            onClick={() => updateStatus(ticket.reference_number, "resolved")}
-            disabled={!!actionLoading}
-            className="w-full bg-green-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
-          >
-            {actionLoading === "resolved" ? "Saving..." : "Mark resolved"}
-          </button>
-        )}
-        {ticket.status === "open" && (
-          <button
-            onClick={() => updateStatus(ticket.reference_number, "escalate")}
-            disabled={!!actionLoading}
-            className="w-full bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
-          >
-            {actionLoading === "escalate" ? "Saving..." : "Escalate"}
-          </button>
-        )}
-        {(ticket.status === "resolved" || ticket.status === "escalated") && (
-          <button
-            onClick={() => updateStatus(ticket.reference_number, "reopen")}
-            disabled={!!actionLoading}
-            className="w-full bg-white border border-gray-300 text-gray-600 rounded-lg px-3 py-2 text-sm font-medium hover:border-gray-400 disabled:opacity-50 transition-colors"
-          >
-            {actionLoading === "reopen" ? "Saving..." : "Reopen"}
-          </button>
-        )}
-      </div>
-
-      {!ticket.deleted_at && (
-        <div className="mt-2 pt-2 border-t border-gray-100">
-          {confirmDelete ? (
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-gray-500 text-center">
-                Move to bin? It will be deleted after {BIN_RETENTION_DAYS} days.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="flex-1 border border-gray-300 text-gray-600 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => binTicket(ticket.reference_number, "delete")}
-                  disabled={actionLoading === "delete"}
-                  className="flex-1 bg-red-600 text-white rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-red-700 disabled:opacity-50"
-                >
-                  {actionLoading === "delete" ? "Moving..." : "Move to bin"}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="w-full text-xs text-gray-400 hover:text-red-500 transition-colors py-1"
-            >
-              🗑 Move to bin
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className={`mt-1 ${ticket.deleted_at ? "hidden" : "block"}`}>
-        <button
-          onClick={() => whatsappForHandyman(ticket)}
-          className="w-full bg-[#25D366] text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-[#1ebe5d] transition-colors"
-        >
-          Send to handyman
-        </button>
-      </div>
-
-      {(ticket.media_urls ?? []).length > 0 && (
-        <div className="mt-2">
-          <span className="text-gray-500 block mb-2">Attachments:</span>
-          <div className="grid grid-cols-2 gap-2">
-            {ticket.media_urls!.map((url, i) => {
-              const isVideo = /\.(mp4|mov|avi|webm|mkv)$/i.test(url);
-              return isVideo ? (
-                <video key={i} src={url} controls className="w-full rounded-lg col-span-2" />
-              ) : (
-                <button
-                  key={i}
-                  onClick={() => setLightboxUrl(url)}
-                  className="w-full rounded-lg overflow-hidden aspect-square"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
-                    alt={`Attachment ${i + 1}`}
-                    className="w-full h-full object-cover hover:opacity-90 transition-opacity"
-                  />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <>
       {lightboxUrl && (
-        <div
-          className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4"
-          onClick={() => setLightboxUrl(null)}
-        >
-          {/* Plain img by choice: arbitrary Supabase Storage URLs, and the
-              onError fallback below depends on the native error event. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightboxUrl}
-            alt="Attachment"
-            className="max-w-full max-h-full rounded-lg object-contain"
-            onClick={(e) => e.stopPropagation()}
-            onError={(e) => {
-              const el = e.currentTarget;
-              el.style.display = "none";
-              const fallback = el.nextElementSibling as HTMLElement | null;
-              if (fallback) fallback.style.display = "flex";
-            }}
-          />
-          <div
-            style={{ display: "none" }}
-            className="flex-col items-center gap-3 text-white text-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-sm opacity-80">This file can&apos;t be previewed in the browser</p>
-            <a
-              href={lightboxUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-white text-gray-900 rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-100"
-            >
-              Download file
-            </a>
-          </div>
-          <button
-            onClick={() => setLightboxUrl(null)}
-            className="absolute top-4 right-4 text-white text-2xl leading-none hover:opacity-70"
-          >
-            ×
-          </button>
-        </div>
+        // Keyed so switching attachments resets the component's error state.
+        <AttachmentLightbox
+          key={lightboxUrl}
+          url={lightboxUrl}
+          onClose={() => setLightboxUrl(null)}
+        />
       )}
 
       {/* Batch send bar */}
@@ -830,7 +431,19 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               ×
             </button>
           </div>
-          <div className="p-5">{renderDetailBody(selected)}</div>
+          <div className="p-5">
+            <TicketDetail
+              key={selected.id}
+              ticket={selected}
+              actionLoading={actionLoading}
+              showDeliveryWarnings={SHOW_DELIVERY_WARNINGS}
+              onStatusChange={updateStatus}
+              onBinAction={binTicket}
+              onSaveNote={saveNote}
+              onSendToHandyman={whatsappForHandyman}
+              onOpenAttachment={setLightboxUrl}
+            />
+          </div>
         </div>
       )}
 
@@ -1109,7 +722,17 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 ×
               </button>
             </div>
-            {renderDetailBody(selected)}
+            <TicketDetail
+              key={selected.id}
+              ticket={selected}
+              actionLoading={actionLoading}
+              showDeliveryWarnings={SHOW_DELIVERY_WARNINGS}
+              onStatusChange={updateStatus}
+              onBinAction={binTicket}
+              onSaveNote={saveNote}
+              onSendToHandyman={whatsappForHandyman}
+              onOpenAttachment={setLightboxUrl}
+            />
           </div>
         )}
       </div>
