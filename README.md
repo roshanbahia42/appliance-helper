@@ -239,6 +239,20 @@ Step 5 — Tenant details (all fields required):
 - Progress bar correctly reflects visual order for both emergency and non-emergency flows
 - Address search restricted to Birmingham via Google Places `locationRestriction`
 
+### Address search
+
+`api/places` returns each suggestion as `{ text, specific }`. Only `specific`
+results — an actual building — can be submitted. Streets and postcodes come back
+too, marked with "search ›"; selecting one feeds it back as the query so the
+tenant narrows down to their building. Without that distinction, widening the
+search would let someone submit "Tiverton Road, Birmingham" with no house number,
+which is useless to a handyman.
+
+Google Places is good at street names but **not** at UK postcode → full list of
+houses; a postcode may return only the postcode area itself. A dedicated UK
+address API (getAddress.io, Ideal Postcodes, Royal Mail PAF) does that properly
+and is worth the small cost if postcode search turns out to matter.
+
 ---
 
 ## Confirmation Page (`/confirmation/[reference]`)
