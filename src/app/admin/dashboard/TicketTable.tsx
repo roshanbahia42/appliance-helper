@@ -443,10 +443,8 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               ⚠ not delivered
             </button>
             {showDeliveryNote && (
-              <p className="mt-1.5 text-xs text-red-800 bg-red-50 border border-red-100 rounded-md px-2 py-1.5 leading-relaxed">
-                The confirmation email was rejected — the address is probably
-                mistyped. They still saw the on-screen confirmation, so they know
-                the report went through. Use their phone number if you need them.
+              <p className="mt-1.5 text-xs text-red-800 bg-red-50 border border-red-100 rounded-md px-2 py-1.5">
+                Confirmation email failed — likely a typo.
               </p>
             )}
           </>
