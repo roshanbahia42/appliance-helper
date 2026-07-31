@@ -382,13 +382,26 @@ export default function Home() {
           )}
 
           <div className="flex flex-col gap-3 mt-2">
-            <p className="text-sm font-medium text-slate-600 text-center">Did these steps fix your issue?</p>
-            <button
-              onClick={() => setSolved(true)}
-              className="w-full bg-green-600 text-white rounded-xl px-4 py-3.5 text-sm font-semibold hover:bg-green-700 transition-colors"
-            >
-              ✓ {isUrgent ? "I have followed these steps — all safe" : "Problem solved!"}
-            </button>
+            {/* Urgent issues get no "solved" exit — even once it's safe, the
+                landlady needs a record that it happened. */}
+            {!isUrgent && (
+              <>
+                <p className="text-sm font-medium text-slate-600 text-center">
+                  Did these steps fix your issue?
+                </p>
+                <button
+                  onClick={() => setSolved(true)}
+                  className="w-full bg-green-600 text-white rounded-xl px-4 py-3.5 text-sm font-semibold hover:bg-green-700 transition-colors"
+                >
+                  ✓ Problem solved!
+                </button>
+              </>
+            )}
+            {isUrgent && (
+              <p className="text-sm text-slate-600 text-center">
+                Even if it is now safe, your landlady needs a record of this.
+              </p>
+            )}
             <button
               onClick={() => goTo(isUrgent ? 4 : 5)}
               className={`w-full text-white rounded-xl px-4 py-3.5 text-sm font-semibold transition-colors ${

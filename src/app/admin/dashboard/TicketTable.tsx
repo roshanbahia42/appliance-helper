@@ -896,6 +896,18 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 {inBin ? "Bin is empty" : "No tickets found"}
               </p>
             )}
+            {/* Desktop gets this from the table header checkbox. */}
+            {filtered.length > 0 && (
+              <label className="flex items-center gap-2 px-1 py-1 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                Select all {filtered.length}
+              </label>
+            )}
             {filtered.map((ticket) => (
               <div
                 key={ticket.id}
