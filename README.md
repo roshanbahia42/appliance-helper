@@ -203,6 +203,12 @@ Step 5 — Tenant details (all fields required):
 ```
 
 - Emergency categories submit as `escalated` and immediately email the landlady
+- **Urgent issues get no "problem solved" exit.** Following the safety steps
+  doesn't remove the landlady's need for a record, so the only way off the tips
+  screen is to report. Non-urgent issues keep the exit — that's the whole point
+  of showing tips first.
+- **Phone numbers are deliberately not format-validated.** Many students are
+  international, and a UK-shaped rule would silently reject valid numbers
 - Non-emergency tickets submit as `open` — landlady checks dashboard
 - Progress bar correctly reflects visual order for both emergency and non-emergency flows
 - Address search restricted to Birmingham via Google Places `locationRestriction`
