@@ -272,7 +272,7 @@ export default function Home() {
             <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">
               What is the issue?
             </h2>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat.id}
@@ -445,9 +445,10 @@ export default function Home() {
           <BackButton onClick={goBack} />
           <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">
             <div className="relative">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Full Address*</label>
+              <label htmlFor="property" className="block text-sm font-medium text-slate-700 mb-1">Full Address*</label>
               <input
                 type="text"
+                id="property"
                 value={selectedProperty || propertySearch}
                 onChange={(e) => {
                   setPropertySearch(e.target.value);
@@ -543,8 +544,9 @@ export default function Home() {
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">About You</h2>
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Full Name*</label>
+                  <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1">Full Name*</label>
                   <input
+                    id="name"
                     value={form.name}
                     autoComplete="name"
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -554,8 +556,9 @@ export default function Home() {
                   />
                 </div>
                 <div className="w-28">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Room No.*</label>
+                  <label htmlFor="room" className="block text-sm font-medium text-slate-700 mb-1">Room No.*</label>
                   <input
+                    id="room"
                     value={form.room_number}
                     onChange={(e) => setForm({ ...form, room_number: e.target.value })}
                     placeholder=""
@@ -566,9 +569,10 @@ export default function Home() {
               </div>
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Email*</label>
+                  <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Email*</label>
                   <input
                     type="text"
+                    id="email"
                     value={form.email}
                     autoComplete="email"
                     inputMode="email"
@@ -592,9 +596,10 @@ export default function Home() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Phone*</label>
+                  <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-1">Phone*</label>
                   <input
                     type="tel"
+                    id="phone"
                     value={form.phone}
                     autoComplete="tel"
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -607,8 +612,9 @@ export default function Home() {
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Description*</label>
+              <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1">Description*</label>
               <textarea
+                id="description"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 required
@@ -681,6 +687,7 @@ export default function Home() {
                       <span className="truncate">{file.name}</span>
                       <button
                         type="button"
+                        aria-label={`Remove ${file.name}`}
                         onClick={() => setFiles(files.filter((f) => fileKey(f) !== fileKey(file)))}
                         className="ml-2 text-slate-400 hover:text-slate-600 shrink-0 text-base leading-none"
                       >

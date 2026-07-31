@@ -426,6 +426,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
             <h3 className="font-semibold text-gray-900">{selected.reference_number}</h3>
             <button
               onClick={() => setSelected(null)}
+              aria-label="Close ticket"
               className="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center"
             >
               ×
@@ -717,6 +718,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               <h3 className="font-semibold text-gray-900">{selected.reference_number}</h3>
               <button
                 onClick={() => setSelected(null)}
+                aria-label="Close ticket"
                 className="text-gray-400 hover:text-gray-600 text-lg leading-none"
               >
                 ×
