@@ -152,5 +152,18 @@ export async function POST(request: NextRequest) {
     }
   });
 
+  // Recorded on the ticket so the landlady can tell a tenant is sitting there
+  // assuming nobody read their report.
+  const tenantResult = results[0];
+  const tenantFailed =
+    tenantResult.status === "rejected" || !!tenantResult.value?.error;
+
+  if (tenantFailed) {
+    await supabase
+      .from("tickets")
+      .update({ confirmation_failed: true })
+      .eq("reference_number", reference);
+  }
+
   return NextResponse.json({ reference });
 }

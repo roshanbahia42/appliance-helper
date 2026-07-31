@@ -19,7 +19,14 @@ type Ticket = {
   sent_to_handyman_at: string | null;
   deleted_at: string | null;
   admin_notes: string | null;
+  confirmation_failed: boolean | null;
 };
+
+// Every confirmation currently fails, because RESEND_FROM still points at the
+// sandbox sender that only delivers to verified addresses. The warning would
+// therefore appear on every ticket and mean nothing. Flip to true once a
+// verified sending domain is live — see "Setting up real email" in the README.
+const SHOW_DELIVERY_WARNINGS = true;
 
 const BIN_RETENTION_DAYS = 30;
 
@@ -423,6 +430,14 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
         >
           {ticket.tenant_email}
         </a>
+        {SHOW_DELIVERY_WARNINGS && ticket.confirmation_failed && (
+          <span
+            className="ml-1.5 text-xs text-red-600 whitespace-nowrap"
+            title="Their confirmation email was rejected — they may not know the report was received"
+          >
+            ⚠ not delivered
+          </span>
+        )}
       </div>
       <div>
         <span className="text-gray-500">Phone: </span>
