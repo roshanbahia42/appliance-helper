@@ -530,14 +530,17 @@ export default function Home() {
           <BackButton onClick={goBack} />
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">
-              <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-500 flex gap-2">
-                <span>📍</span>
-                <span>{selectedProperty}</span>
+              {/* Read-only confirmation of the earlier steps. Labelled rather
+                  than icon-led, matching the label/value pattern used in the
+                  admin detail panel. */}
+              <div className="bg-slate-50 rounded-lg px-3 py-2 text-xs">
+                <span className="text-slate-400">Property: </span>
+                <span className="text-slate-600">{selectedProperty}</span>
               </div>
               {category && (
-                <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-500 flex gap-2">
-                  <span>{category.icon}</span>
-                  <span>
+                <div className="bg-slate-50 rounded-lg px-3 py-2 text-xs">
+                  <span className="text-slate-400">Issue: </span>
+                  <span className="text-slate-600">
                     {category.name}
                     {subcategory ? ` — ${subcategory.name}` : ""}
                   </span>

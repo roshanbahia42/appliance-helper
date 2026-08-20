@@ -9,7 +9,6 @@ export type Subcategory = {
 export type Category = {
   id: string;
   name: string;
-  icon: string;
   isEmergency?: boolean;
   subcategories: Subcategory[];
 };
@@ -25,7 +24,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "emergency",
     name: "Emergency",
-    icon: "🚨",
     isEmergency: true,
     subcategories: [
       {
@@ -110,7 +108,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "heating-cooling",
     name: "Heating and Cooling",
-    icon: "🌡️",
     subcategories: [
       {
         id: "single-radiator",
@@ -164,7 +161,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "plumbing-water",
     name: "Plumbing and Water",
-    icon: "🚿",
     subcategories: [
       {
         id: "no-hot-water",
@@ -230,7 +226,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "electrical",
     name: "Electrical",
-    icon: "⚡",
     subcategories: [
       {
         id: "power-outage",
@@ -287,7 +282,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "appliances",
     name: "Appliances",
-    icon: "🏠",
     subcategories: [
       {
         id: "fridge-not-cooling",
@@ -425,7 +419,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "doors-windows",
     name: "Doors and Windows",
-    icon: "🚪",
     subcategories: [
       {
         id: "door-wont-close",
@@ -497,7 +490,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "pests",
     name: "Pests and Environmental",
-    icon: "🐛",
     subcategories: [
       {
         id: "pest-infestation",
@@ -542,7 +534,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "bathroom",
     name: "Bathroom Fittings",
-    icon: "🛁",
     subcategories: [
       {
         id: "shower-weak-flow",
@@ -593,7 +584,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "kitchen",
     name: "Kitchen",
-    icon: "🍳",
     subcategories: [
       {
         id: "cupboard-hinge-broken",
@@ -632,7 +622,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "lighting",
     name: "Lighting",
-    icon: "💡",
     subcategories: [
       {
         id: "ceiling-light",
@@ -670,7 +659,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "walls-ceilings",
     name: "Walls, Ceilings and Floors",
-    icon: "🧱",
     subcategories: [
       {
         id: "damp-patch",
@@ -710,7 +698,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "security",
     name: "Security and Safety",
-    icon: "🔒",
     subcategories: [
       {
         id: "carbon-monoxide",
@@ -752,7 +739,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "garden",
     name: "External and Garden",
-    icon: "🌿",
     subcategories: [
       {
         id: "fence-damaged",
@@ -790,7 +776,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "furniture",
     name: "Furniture and Furnishing",
-    icon: "🛋️",
     subcategories: [
       {
         id: "bed-frame-broken",
@@ -828,7 +813,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "internet",
     name: "Internet, TV and Phone",
-    icon: "📡",
     subcategories: [
       {
         id: "internet-not-working",
@@ -858,7 +842,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "communal",
     name: "Communal Areas",
-    icon: "🏢",
     subcategories: [
       {
         id: "communal-lighting",
@@ -895,7 +878,6 @@ export const CATEGORIES: Category[] = [
   {
     id: "other",
     name: "Other / Not Sure",
-    icon: "🔧",
     subcategories: [],
   },
 ];
