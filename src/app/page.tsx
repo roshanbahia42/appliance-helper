@@ -533,8 +533,8 @@ export default function Home() {
               {/* Read-only confirmation of the earlier steps. Labelled rather
                   than icon-led, matching the label/value pattern used in the
                   admin detail panel. */}
-              <div className="bg-slate-50 rounded-lg px-3 py-2 text-xs">
-                <span className="text-slate-400">Property: </span>
+              <div className="bg-slate-50 rounded-lg px-3 py-2 text-xs flex gap-2">
+                <span>📍</span>
                 <span className="text-slate-600">{selectedProperty}</span>
               </div>
               {category && (
