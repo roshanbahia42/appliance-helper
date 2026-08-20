@@ -85,6 +85,9 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  // Distinguishes "Google rejected us" from "that address doesn't exist", so a
+  // suspended key doesn't just look like a tenant mistyping their street.
+  const [addressLookupBroken, setAddressLookupBroken] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [solved, setSolved] = useState(false);
@@ -162,6 +165,7 @@ export default function Home() {
         const res = await fetch(`/api/places?input=${encodeURIComponent(input)}`);
         const data = await res.json();
         setSuggestions(data.suggestions ?? []);
+        setAddressLookupBroken(Boolean(data.error));
       } finally {
         setSuggestionsLoading(false);
       }
@@ -491,7 +495,9 @@ export default function Home() {
                 suggestions.length === 0 &&
                 !selectedProperty && (
                   <p className="mt-2 text-xs text-slate-500">
-                    No matches — make sure you start with your house or flat number.
+                    {addressLookupBroken
+                      ? "Address search is temporarily unavailable. Please try again shortly."
+                      : "No matches — make sure you start with your house or flat number."}
                   </p>
                 )}
             </div>
