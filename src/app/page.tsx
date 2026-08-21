@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES, type Category, type Subcategory } from "@/lib/categories";
+import { iconForCategory } from "@/lib/categoryIcons";
 import {
   compressImage,
   fileKey,
@@ -277,19 +278,25 @@ export default function Home() {
               What is the issue?
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => selectCategory(cat)}
-                  className={`flex items-center justify-center p-4 rounded-xl border text-center transition-all h-20 ${
-                    cat.isEmergency
-                      ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-400"
-                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#0f2044] hover:bg-blue-50 hover:text-[#0f2044]"
-                  }`}
-                >
-                  <span className="text-xs font-semibold leading-tight">{cat.name}</span>
-                </button>
-              ))}
+              {CATEGORIES.map((cat) => {
+                const Icon = iconForCategory(cat.id);
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => selectCategory(cat)}
+                    className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border text-center transition-all h-24 ${
+                      cat.isEmergency
+                        ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-400"
+                        : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#0f2044] hover:bg-blue-50 hover:text-[#0f2044]"
+                    }`}
+                  >
+                    {/* Decorative — the label already names the category, so a
+                        screen reader shouldn't read it twice. */}
+                    <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                    <span className="text-xs font-semibold leading-tight">{cat.name}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
