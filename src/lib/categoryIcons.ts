@@ -28,7 +28,7 @@ import {
  */
 export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   emergency: Siren,
-  "heating-cooling": Thermometer,
+  heating: Thermometer,
   "plumbing-water": Droplets,
   electrical: Zap,
   appliances: WashingMachine,
