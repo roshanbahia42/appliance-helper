@@ -415,13 +415,13 @@ export default function Home() {
             {!isUrgent && (
               <>
                 <p className="text-sm font-medium text-slate-600 text-center">
-                  Did these steps fix your issue?
+                  {subcategory.prompt ?? "Did these steps fix your issue?"}
                 </p>
                 <button
                   onClick={() => setSolved(true)}
                   className="w-full bg-green-600 text-white rounded-xl px-4 py-3.5 text-sm font-semibold hover:bg-green-700 transition-colors"
                 >
-                  ✓ Problem solved!
+                  ✓ {subcategory.solvedLabel ?? "Problem solved!"}
                 </button>
               </>
             )}
@@ -436,7 +436,9 @@ export default function Home() {
                 isUrgent ? "bg-red-700 hover:bg-red-800" : "bg-[#0f2044] hover:bg-blue-900"
               }`}
             >
-              {isUrgent ? "Report to landlord →" : "I still need help →"}
+              {isUrgent
+                ? "Report to landlord →"
+                : `${subcategory.continueLabel ?? "I still need help"} →`}
             </button>
           </div>
         </div>

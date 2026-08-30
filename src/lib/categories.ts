@@ -6,6 +6,13 @@ export type Subcategory = {
   isUrgent?: boolean;
   /** Suppresses the "search YouTube" prompt where no video could help. */
   noVideo?: boolean;
+  /**
+   * Overrides for the tips screen, where "Did these steps fix your issue?" and
+   * "I still need help" don't describe the actual choice.
+   */
+  prompt?: string;
+  solvedLabel?: string;
+  continueLabel?: string;
 };
 
 export type Category = {
@@ -386,6 +393,9 @@ export const CATEGORIES: Category[] = [
         name: "Lost Key",
         description: "Key lost or missing",
         noVideo: true,
+        prompt: "Have you found the key?",
+        solvedLabel: "Yes, found it",
+        continueLabel: "Notify the landlady once payment is made",
         tips: [
           "Retrace your steps and check everywhere you have been. Most keys turn up",
           "If you cannot find it, a replacement must be ordered and the cost is £80",
