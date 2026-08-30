@@ -16,24 +16,27 @@ export default function MessageTenants({
   property,
   tenant,
   label,
+  defaultSubject = "",
   full = false,
 }: {
   property: string;
   /** Omit to message everyone at the property. */
   tenant?: { email: string; name: string };
   label: string;
+  /** Prefills the subject. The ticket's category, where there is one. */
+  defaultSubject?: string;
   /** Full width suits the detail panel; inline suits the filter row. */
   full?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(defaultSubject);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
   const close = () => {
     setOpen(false);
-    setSubject("");
+    setSubject(defaultSubject);
     setBody("");
     setResult(null);
   };
@@ -65,7 +68,7 @@ export default function MessageTenants({
         : `Sent to ${data.sent} ${data.sent === 1 ? "tenant" : "tenants"}` +
             (data.failed ? `. ${data.failed} failed` : "")
     );
-    setSubject("");
+    setSubject(defaultSubject);
     setBody("");
   };
 

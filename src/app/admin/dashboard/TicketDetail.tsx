@@ -89,16 +89,9 @@ export default function TicketDetail({
 
       <div>
         <span className="text-gray-500">Phone: </span>
-        {ticket.tenant_phone ? (
-          <a
-            href={`tel:${ticket.tenant_phone.replace(/\s/g, "")}`}
-            className="text-blue-700 hover:underline"
-          >
-            {ticket.tenant_phone}
-          </a>
-        ) : (
-          <span className="text-gray-900">Not provided</span>
-        )}
+        <span className="text-gray-900">
+          {ticket.tenant_phone ?? "Not provided"}
+        </span>
       </div>
 
       <div>
@@ -271,11 +264,13 @@ export default function TicketDetail({
               property={ticket.property_address}
               tenant={{ email: ticket.tenant_email, name: ticket.tenant_name }}
               label={`Message ${ticket.tenant_name.split(" ")[0]}`}
+              defaultSubject={ticket.category}
               full
             />
             <MessageTenants
               property={ticket.property_address}
               label="Message everyone at this property"
+              defaultSubject={ticket.category}
               full
             />
           </div>
