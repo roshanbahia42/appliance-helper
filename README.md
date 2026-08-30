@@ -1,6 +1,8 @@
-# Student Maintenance Hub
+# Eastwinds Maintenance
 
-A Next.js PWA for student tenants to report maintenance issues to their landlady. Designed for ~80 student tenants across multiple managed properties in Birmingham.
+A Next.js PWA for student tenants to report maintenance issues to their landlady.
+Built for Eastwinds Property Group: roughly 80 student tenants across several
+managed properties in Birmingham.
 
 **Live URL:** https://appliance-helper-self.vercel.app  
 **Auto-deploys from:** `main` branch on GitHub (`roshanbahia42/appliance-helper`)  
@@ -15,9 +17,9 @@ A Next.js PWA for student tenants to report maintenance issues to their landlady
 | Framework | Next.js (App Router) with Geist font |
 | Database | Supabase (`tickets` table) |
 | File storage | Supabase Storage (`ticket-media` bucket, public) |
-| Email | Resend (`onboarding@resend.dev` — **sandbox**, see below) |
+| Email | Resend (still the sandbox sender until the domain is set up) |
 | Address lookup | Google Places API (New) — server-side proxy, restricted to Birmingham (15km radius) |
-| Styling | Tailwind CSS v4 |
+| Styling | Tailwind CSS v4, Lucide icons |
 | Auth | Supabase Auth (admin only) |
 | Hosting | Vercel (`appliance-helper-self.vercel.app`) |
 
@@ -39,29 +41,78 @@ RESEND_FROM=                 # e.g. "Maintenance <maintenance@send.example.com>"
 RESEND_REPLY_TO=             # optional: where tenant replies go
 ```
 
-### Setting up real email
+## Domain setup
 
-Until `RESEND_FROM` points at a verified domain, the app falls back to
-`onboarding@resend.dev`, which **only delivers to addresses verified in the
-Resend account** — so students receive nothing.
+Both jobs below are DNS changes on the landlady's existing domain, so do them
+together in one request to whoever manages it. Nothing here is urgent to a
+tenant, but until the email half is done **students receive no confirmation
+emails at all** — the fallback sender only delivers to addresses verified in the
+Resend account.
 
-1. **Get a domain.** Sending from `vercel.app` isn't possible. Either the
-   landlady's existing business domain or a new one (~£10/year).
-2. **Add it in Resend** → Domains → Add Domain. Use a *subdomain* such as
-   `send.example.com`, so email reputation stays isolated from the main domain.
-3. **Add the DNS records Resend shows** at the registrar — DKIM, SPF, and an MX
-   record for bounce handling. Verification usually takes minutes.
-4. **Add a DMARC record.** Not enforced by Resend, but Gmail and Outlook weight
-   it heavily, and many students will be on university mail with strict
-   filtering. Start with `v=DMARC1; p=none; rua=mailto:you@example.com`.
-5. **Set `RESEND_FROM`** in Vercel, e.g.
-   `Student Maintenance <maintenance@send.example.com>`. No redeploy needed
-   beyond the env change.
-6. **Send a real test** to a Gmail and a university address, and check it isn't
-   in spam.
+### One rule that decides everything
+
+**The app and the email sending must use different subdomains.** A CNAME record
+has to be the only record at its name; the app needs a CNAME, and Resend needs MX
+and TXT records. Put both at the same subdomain and one will break.
+
+| Purpose | Subdomain | Records |
+|---|---|---|
+| The app students visit | `maintenance.example.co.uk` | one CNAME, from Vercel |
+| Sending email | `mail.example.co.uk` | MX + TXT (or CNAMEs), from Resend |
+
+Sender then reads `maintenance@mail.example.co.uk`. Slightly redundant, but only
+the domain registers with anyone reading it.
+
+### 1. Get the records
+
+**Vercel** → project → Settings → Domains → Add → enter the app subdomain.
+It shows one CNAME record.
+
+**Resend** → Domains → Add Domain → enter the sending subdomain. It shows three
+records. Note the Type column rather than the labels: Resend files the MX record
+under "SPF", so "one DKIM and two SPF" is the expected three.
+
+Optionally add DMARC yourself, scoped to the sending subdomain so it cannot
+affect her existing mail: TXT at `_dmarc.mail`, value
+`v=DMARC1; p=none; rua=mailto:her@example.co.uk`.
+
+### 2. Send them to the web person
+
+Screenshot both sets rather than retyping. A single dropped character in a DKIM
+key fails silently. Include:
+
+- **Additions only.** Do not modify or replace existing records, particularly
+  the SPF or MX on the root domain, or her business email stops working.
+- **Cloudflare users:** set these to "DNS only" (grey cloud), not proxied.
+  Proxying breaks both mail authentication and the Vercel CNAME.
+- **Enter names exactly as shown.** Some panels append the domain themselves,
+  which turns `mail.example.co.uk` into `mail.example.co.uk.example.co.uk`.
+
+Copy her in. An unknown person asking for DNS changes should make a good web
+developer suspicious.
+
+### 3. Finish in Vercel
+
+Once both verify:
+
+- Set `RESEND_FROM` to `Eastwinds Maintenance <maintenance@mail.example.co.uk>`
+- Set `NEXT_PUBLIC_APP_URL` to the new app address. This builds the "View your
+  request" link in every confirmation email, so missing it leaves students with
+  dead vercel.app links
+- **Redeploy.** Environment variables do not take effect until you do
+- Flip `SHOW_DELIVERY_WARNINGS` to false in `TicketTable.tsx`
+
+### 4. Check
+
+1. Email her at her normal address and confirm it still arrives. If DNS went
+   wrong you want to know within the hour
+2. Submit a test ticket to a Gmail address, checking the spam folder rather than
+   assuming
+3. Try a university address if you can. They filter hardest, and that's where
+   most students are
 
 Email failures are logged to the Vercel function logs (`Email to tenant failed
-for MT-…`) and never fail the submission — the ticket is already saved by then.
+for MT-…`) and never fail a submission, since the ticket is already saved.
 
 ---
 
@@ -70,8 +121,11 @@ for MT-…`) and never fail the submission — the ticket is already saved by th
 ```
 src/
   app/
-    layout.tsx                            # root layout — Geist font, PWA meta tags
+    layout.tsx                            # root layout: Geist font, PWA meta tags
     page.tsx                              # entire multi-step student form (state machine)
+    Brand.tsx                             # arch mark + wordmark lockup
+    SiteHeader.tsx                        # navy header used on every screen
+    icon.svg                              # favicon
     globals.css                           # Tailwind base + global button cursor
     manifest.ts                           # student PWA manifest (start_url: "/")
     api/
@@ -79,6 +133,7 @@ src/
       places/route.ts                     # GET: Google Places autocomplete proxy (Birmingham only)
       upload-url/route.ts                 # POST: generates signed Supabase upload URL (bypasses RLS)
       job-batch/route.ts                  # POST: creates a handyman job sheet from selected tickets
+      message-property/route.ts           # POST: emails every tenant at one property
       tickets/bulk/route.ts               # POST: bulk bin / restore / purge / resolve / reopen
       tickets/[reference]/
         resolved/route.ts                 # POST: marks resolved (media kept)
@@ -87,7 +142,7 @@ src/
         delete/route.ts                   # POST: moves to bin (soft delete)
         restore/route.ts                  # POST: restores from bin
         purge/route.ts                    # POST: permanent delete — row + media files
-        notes/route.ts                    # POST: saves private admin notes
+        notes/route.ts                    # POST: saves the landlady's note for the handyman
     confirmation/[reference]/
       page.tsx                            # confirmation page (server component)
       CloseTicketButton.tsx               # client component — subtle self-resolve link
@@ -102,20 +157,26 @@ src/
         TicketTable.tsx                   # state, filtering, list views, selection bar
         TicketDetail.tsx                  # one ticket: details, actions, notes, attachments
         AttachmentLightbox.tsx            # full-screen viewer with download fallback
+        MessageProperty.tsx               # compose box for emailing a whole house
   lib/
     categories.ts                         # source of truth: all categories, subcategories, tips
                                           # also contains CONTACTS object with landlady/landlord phone numbers
     tickets.ts                            # Ticket type + pure logic: age, bin maths, sort/filter
                                           # config, handyman message formatters
-    media.ts                              # browser-side image compression + HEIC→JPEG
+    categoryIcons.ts                      # category id -> Lucide icon
+    media.ts                              # browser-side image compression + HEIC to JPEG
     storage.ts                            # shared helpers for deleting ticket media
 middleware.ts                             # refreshes the Supabase session, guards /admin/dashboard
   utils/
     supabase/
       admin.ts                            # service-role client (server only)
+      requireAdmin.ts                     # 401 guard for admin-only API routes
       server.ts                           # session-aware client (server)
       client.ts                           # browser client
 public/
+  brand/                                  # source SVGs for the mark and wordmark
+  icon-512.png / icon-192.png             # PWA icons, rendered from brand/
+  apple-icon.png                          # iOS home screen
   admin-manifest.webmanifest              # admin PWA manifest (start_url: "/admin/login", scope: "/admin/")
   icon-192.png                            # PWA icon (placeholder — swap for real logo)
   icon-512.png                            # PWA icon (placeholder)
@@ -174,6 +235,18 @@ If a `properties` table exists, enable RLS on it too:
 ```sql
 ALTER TABLE properties ENABLE ROW LEVEL SECURITY;
 ```
+
+### Admin API routes require a session
+
+The middleware only guards `/admin/dashboard`, which stops someone loading the
+page but does nothing for the routes behind it. `requireAdmin()` gates every
+admin route: bulk, job-batch, message-property, notes, delete, purge, restore,
+escalate and reopen. Without it, anyone who knew the URL could POST to
+`/api/tickets/bulk` and permanently purge tickets.
+
+`/resolved` is deliberately left open, because the tenant's own close-ticket link
+on the confirmation page calls it. `/submit`, `/places` and `/upload-url` are the
+public student flow.
 
 ### Why RLS with no policies
 
@@ -329,7 +402,9 @@ Features:
 - Detail panel includes:
   - Tenant name, room, email, phone, property, category, description
   - **Mark resolved** / **Escalate** / **Reopen** status buttons
-  - **Private notes** — free-text box saved per ticket; tickets with notes show 📝
+  - **Notes for the handyman** — saved per ticket and included in the message
+    sent to him. Tickets with notes show a marker in the list
+  - **Message everyone at this property** — see below
   - Tenant email and phone are `mailto:` / `tel:` links
   - **Move to bin** (with confirmation) — soft delete, recoverable for 30 days
   - **Send to handyman** — opens WhatsApp with this one ticket pre-filled
@@ -366,7 +441,7 @@ Records are kept for the tenancy year, then cleared when tenants change over:
 
 1. Set the date filter to **Older than 1 year**
 2. Tick the header checkbox to select everything showing
-3. **🗑 Bin** in the selection bar, then confirm
+3. **Bin** in the selection bar, then confirm
 
 That leaves a 30-day grace period before they're purged automatically. To skip
 the wait, open the **Bin** tab, select all, and **Delete permanently** — that one
@@ -392,6 +467,21 @@ Buttons lay out as a 2-column grid on mobile so four fit without cramping.
 Every action confirms first, including Restore — an accidental restore drops
 tickets back among hundreds of others with no easy way to find them again. The
 prompts and button colours live in `BULK_CONFIRM` in `TicketTable.tsx`.
+
+### Messaging a whole property
+
+Pick a property in the filters, or open any ticket, and **Message everyone at
+this property** opens a compose box. Recipients are worked out server-side from
+live tickets at that address within the last year, so there is no tenant list to
+maintain: the annual clear-out doubles as list maintenance, because binning last
+year's tickets drops last year's tenants. The one-year window is a backstop for a
+clear-out that gets skipped.
+
+Everyone receives their own copy. One email with the whole house in the To field
+would disclose every tenant's address to the others.
+
+Tenants who have never reported anything won't be on the list. Asking each new
+intake to file one test ticket at the start of the year closes that gap.
 
 ### The fortnightly round
 
@@ -538,17 +628,14 @@ only way to know whether work happened is to ask.
 
 ## Blocking go-live
 
-1. **Resend real domain** — the sandbox sender only delivers to addresses
-   verified in Resend, so **no student currently receives their confirmation
-   email**. Code is ready; it needs a domain, DNS records, and `RESEND_FROM`
-   set in Vercel. See "Setting up real email" above. This is the one item that
-   makes the student-facing half of the app work.
-2. **Rotate API keys** — all keys were exposed in a dev session and should be
-   rotated before real data exists.
-3. **Replace `LANDLORD_EMAIL`** in Vercel with the landlady's real address —
-   emergency alerts currently go to Roshan.
-4. **PWA icons and app name** — `public/icon-192.png` / `icon-512.png` are
-   placeholders and "Student Maintenance Hub" is provisional.
+1. **Domain setup.** Until it's done **no student receives a confirmation
+   email**, because the fallback sender only delivers to verified addresses.
+   The code is ready; this is DNS plus two environment variables. See "Domain
+   setup" above, which covers the app URL and email sending together.
+2. **Rotate API keys.** All keys were exposed in a dev session and should be
+   rotated before real tenant data exists.
+3. **Replace `LANDLORD_EMAIL`** in Vercel with the landlady's real address.
+   Emergency alerts currently go to Roshan.
 
 ## Waiting on the landlady
 
