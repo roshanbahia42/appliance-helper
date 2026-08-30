@@ -47,20 +47,22 @@ export default async function JobSheetPage({
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-[#0f2044]">
-        <div className="px-5 sm:px-8 py-4">
-          <Brand size="lg" />
-        </div>
-        <div className="max-w-2xl mx-auto px-5 pb-6">
-          <h1 className="text-xl font-bold text-white">Maintenance Jobs</h1>
-          <p className="text-blue-200 text-sm mt-0.5">
-            {jobs.length} {jobs.length === 1 ? "job" : "jobs"} across{" "}
-            {properties.length} {properties.length === 1 ? "property" : "properties"} ·{" "}
-            {new Date(batch.created_at).toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </p>
+        <div className="max-w-3xl mx-auto px-5 sm:px-8 py-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-7">
+          <div className="shrink-0">
+            <Brand size="lg" />
+          </div>
+          <div className="flex-1 min-w-0 sm:border-l sm:border-white/15 sm:pl-7">
+            <h1 className="text-xl font-bold text-white">Maintenance Jobs</h1>
+            <p className="text-blue-200 text-sm mt-0.5">
+              {jobs.length} {jobs.length === 1 ? "job" : "jobs"} across{" "}
+              {properties.length} {properties.length === 1 ? "property" : "properties"} ·{" "}
+              {new Date(batch.created_at).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </p>
+          </div>
         </div>
       </header>
 

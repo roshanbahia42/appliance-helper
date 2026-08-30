@@ -4,28 +4,31 @@ import Brand from "./Brand";
 /**
  * Navy header used across every screen.
  *
- * The lockup sits in a full-width bar so it uses the empty space either side of
- * the centred content column, rather than being squeezed into it. It always
- * links home, which is the only persistent way back on the inner steps.
+ * On desktop the lockup and the page title sit side by side on one row. Stacked
+ * bands left dead space twice over: to the right of the logo, and above a title
+ * that had drifted to the bottom of a tall navy block. Below `sm` they stack,
+ * which is the only thing that fits on a phone.
  *
- * `children` is the page's own title block, kept in the narrow column so it
- * lines up with the content below.
+ * The lockup always links home. It's the only persistent way back from an inner
+ * step.
  */
 export default function SiteHeader({ children }: { children?: React.ReactNode }) {
   return (
     <header className="bg-[#0f2044]">
-      <div className="px-5 sm:px-8 py-4">
+      <div className="max-w-3xl mx-auto px-5 sm:px-8 py-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-7">
         <Link
           href="/"
           aria-label="Eastwinds home"
-          className="inline-block hover:opacity-80 transition-opacity"
+          className="shrink-0 hover:opacity-80 transition-opacity"
         >
           <Brand size="lg" />
         </Link>
+        {children && (
+          <div className="flex-1 min-w-0 sm:border-l sm:border-white/15 sm:pl-7">
+            {children}
+          </div>
+        )}
       </div>
-      {children && (
-        <div className="max-w-xl mx-auto px-6 pb-5">{children}</div>
-      )}
     </header>
   );
 }

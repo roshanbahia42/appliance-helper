@@ -16,7 +16,7 @@ import {
   type BulkAction,
   type Ticket,
 } from "@/lib/tickets";
-import { Trash2, X } from "lucide-react";
+import { Check, StickyNote, Trash2, X } from "lucide-react";
 import AttachmentLightbox from "./AttachmentLightbox";
 import TicketDetail from "./TicketDetail";
 import MessageProperty from "./MessageProperty";
@@ -598,7 +598,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     <span className="font-medium text-gray-900 text-sm">
                       {ticket.tenant_name}{ticket.tenant_room ? `, Room ${ticket.tenant_room}` : ""}
                       {ticket.admin_notes && (
-                        <span className="ml-1 text-xs" title="Has notes">📝</span>
+                        <StickyNote className="inline w-3.5 h-3.5 ml-1 text-gray-400 align-[-2px]" aria-label="Has notes" />
                       )}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${STATUS_COLORS[ticket.status] ?? "bg-gray-100 text-gray-600"}`}>
@@ -609,9 +609,11 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                   <p className="text-xs text-gray-400 truncate mt-0.5">{ticket.property_address}</p>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     {ticket.sent_to_handyman_at && (
-                      <span className="text-green-600 text-base leading-none font-bold" title="Sent to handyman">
-                        ✓
-                      </span>
+                      <Check
+                        className="w-4 h-4 text-green-600"
+                        strokeWidth={3}
+                        aria-label="Sent to handyman"
+                      />
                     )}
                     <span
                       className={`text-xs ${isStale(ticket) ? "text-red-600 font-medium" : "text-gray-400"}`}
@@ -691,7 +693,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">
                       {ticket.reference_number}
                       {ticket.admin_notes && (
-                        <span className="ml-1" title="Has notes">📝</span>
+                        <StickyNote className="inline w-3.5 h-3.5 ml-1 text-gray-400 align-[-2px]" aria-label="Has notes" />
                       )}
                     </td>
                     <td className="px-4 py-3 text-gray-900">{ticket.tenant_name}</td>
@@ -704,9 +706,11 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     </td>
                     <td className="px-4 py-3">
                       {ticket.sent_to_handyman_at ? (
-                        <span className="text-green-600 text-base font-bold" title="Sent to handyman">
-                          ✓
-                        </span>
+                        <Check
+                          className="w-5 h-5 text-green-600"
+                          strokeWidth={3}
+                          aria-label="Sent to handyman"
+                        />
                       ) : (
                         <span className="text-xs text-gray-300">—</span>
                       )}
