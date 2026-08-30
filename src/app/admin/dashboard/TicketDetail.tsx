@@ -8,6 +8,7 @@ import {
   isStale,
   type Ticket,
 } from "@/lib/tickets";
+import MessageProperty from "./MessageProperty";
 
 /**
  * Everything shown for one ticket. Rendered twice — as a sticky side panel on
@@ -259,13 +260,18 @@ export default function TicketDetail({
             )}
           </div>
 
-          <div className="mt-1">
+          <div className="mt-1 flex flex-col gap-2">
             <button
               onClick={() => onSendToHandyman(ticket)}
               className="w-full bg-[#25D366] text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-[#1ebe5d] transition-colors"
             >
               Send to handyman
             </button>
+            <MessageProperty
+              property={ticket.property_address}
+              label="Message everyone at this property"
+              full
+            />
           </div>
         </>
       )}

@@ -11,7 +11,16 @@ import { Mail } from "lucide-react";
  * is no tenant list to keep up to date. Everyone is sent their own copy rather
  * than one email addressed to the whole house.
  */
-export default function MessageProperty({ property }: { property: string }) {
+export default function MessageProperty({
+  property,
+  label = "Message tenants",
+  full = false,
+}: {
+  property: string;
+  label?: string;
+  /** Full width suits the detail panel; inline suits the filter row. */
+  full?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -53,10 +62,12 @@ export default function MessageProperty({ property }: { property: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 border border-gray-300 text-gray-700 rounded-lg px-3 py-1.5 text-sm font-medium hover:bg-gray-50"
+        className={`flex items-center justify-center gap-1.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 ${
+          full ? "w-full px-3 py-2" : "px-3 py-1.5"
+        }`}
       >
         <Mail className="w-4 h-4" aria-hidden="true" />
-        Message tenants
+        {label}
       </button>
     );
   }
