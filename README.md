@@ -133,7 +133,7 @@ src/
       places/route.ts                     # GET: Google Places autocomplete proxy (Birmingham only)
       upload-url/route.ts                 # POST: generates signed Supabase upload URL (bypasses RLS)
       job-batch/route.ts                  # POST: creates a handyman job sheet from selected tickets
-      message-property/route.ts           # POST: emails every tenant at one property
+      message-tenants/route.ts            # POST: emails one tenant, or a whole property
       tickets/bulk/route.ts               # POST: bulk bin / restore / purge / resolve / reopen
       tickets/[reference]/
         resolved/route.ts                 # POST: marks resolved (media kept)
@@ -157,7 +157,7 @@ src/
         TicketTable.tsx                   # state, filtering, list views, selection bar
         TicketDetail.tsx                  # one ticket: details, actions, notes, attachments
         AttachmentLightbox.tsx            # full-screen viewer with download fallback
-        MessageProperty.tsx               # compose box for emailing a whole house
+        MessageTenants.tsx                # compose box: one tenant or a whole house
   lib/
     categories.ts                         # source of truth: all categories, subcategories, tips
                                           # also contains CONTACTS object with landlady/landlord phone numbers
@@ -240,7 +240,7 @@ ALTER TABLE properties ENABLE ROW LEVEL SECURITY;
 
 The middleware only guards `/admin/dashboard`, which stops someone loading the
 page but does nothing for the routes behind it. `requireAdmin()` gates every
-admin route: bulk, job-batch, message-property, notes, delete, purge, restore,
+admin route: bulk, job-batch, message-tenants, notes, delete, purge, restore,
 escalate and reopen. Without it, anyone who knew the URL could POST to
 `/api/tickets/bulk` and permanently purge tickets.
 
@@ -468,20 +468,30 @@ Every action confirms first, including Restore — an accidental restore drops
 tickets back among hundreds of others with no easy way to find them again. The
 prompts and button colours live in `BULK_CONFIRM` in `TicketTable.tsx`.
 
-### Messaging a whole property
+### Emailing tenants
 
-Pick a property in the filters, or open any ticket, and **Message everyone at
-this property** opens a compose box. Recipients are worked out server-side from
-live tickets at that address within the last year, so there is no tenant list to
-maintain: the annual clear-out doubles as list maintenance, because binning last
-year's tickets drops last year's tenants. The one-year window is a backstop for a
-clear-out that gets skipped.
+Two buttons in the ticket detail: **Message <first name>** for something about
+one room, and **Message everyone at this property** for something affecting the
+house. The filter row also carries the whole-house version, for when there is no
+particular ticket in hand.
+
+Both go through `/api/message-tenants` so the sender address, the template and
+the one-copy-each rule can only behave one way. The tenant's email is shown as
+plain text rather than a `mailto:` link, because handing off to the device's mail
+client sends from whatever personal account it happens to use, which is the
+problem these buttons exist to solve.
+
+Whole-house recipients are worked out server-side from live tickets at that
+address within the last year, so there is no tenant list to maintain: the annual
+clear-out doubles as list maintenance, because binning last year's tickets drops
+last year's tenants. The one-year window is a backstop for a clear-out that gets
+skipped.
 
 Everyone receives their own copy. One email with the whole house in the To field
 would disclose every tenant's address to the others.
 
-Tenants who have never reported anything won't be on the list. Asking each new
-intake to file one test ticket at the start of the year closes that gap.
+Tenants who have never reported anything won't be on the whole-house list. Asking
+each new intake to file one test ticket at the start of the year closes that gap.
 
 ### The fortnightly round
 

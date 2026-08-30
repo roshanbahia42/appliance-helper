@@ -9,7 +9,7 @@ import {
   isStale,
   type Ticket,
 } from "@/lib/tickets";
-import MessageProperty from "./MessageProperty";
+import MessageTenants from "./MessageTenants";
 
 /**
  * Everything shown for one ticket. Rendered twice — as a sticky side panel on
@@ -64,12 +64,10 @@ export default function TicketDetail({
 
       <div>
         <span className="text-gray-500">Email: </span>
-        <a
-          href={`mailto:${ticket.tenant_email}?subject=${encodeURIComponent(`Maintenance request ${ticket.reference_number}`)}`}
-          className="text-blue-700 hover:underline break-all"
-        >
-          {ticket.tenant_email}
-        </a>
+        {/* Plain text, not a mailto: link. Handing off to the device's mail
+            client sends from whatever personal account it happens to use, which
+            is the thing the compose buttons below exist to avoid. */}
+        <span className="text-gray-900 break-all">{ticket.tenant_email}</span>
         {showDeliveryWarnings && ticket.confirmation_failed && (
           <>
             {/* Click rather than a title tooltip: native tooltips don't exist on
@@ -269,7 +267,13 @@ export default function TicketDetail({
             >
               Send to handyman
             </button>
-            <MessageProperty
+            <MessageTenants
+              property={ticket.property_address}
+              tenant={{ email: ticket.tenant_email, name: ticket.tenant_name }}
+              label={`Message ${ticket.tenant_name.split(" ")[0]}`}
+              full
+            />
+            <MessageTenants
               property={ticket.property_address}
               label="Message everyone at this property"
               full

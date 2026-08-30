@@ -19,7 +19,7 @@ import {
 import { Check, FileText, Trash2, X } from "lucide-react";
 import AttachmentLightbox from "./AttachmentLightbox";
 import TicketDetail from "./TicketDetail";
-import MessageProperty from "./MessageProperty";
+import MessageTenants from "./MessageTenants";
 
 // Every confirmation currently fails, because RESEND_FROM still points at the
 // sandbox sender that only delivers to verified addresses. The warning would
@@ -556,7 +556,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
 
           {filterProperty !== "all" && (
             <div className="mb-4">
-              <MessageProperty property={filterProperty} />
+              <MessageTenants property={filterProperty} label="Message tenants" />
             </div>
           )}
 

@@ -17,11 +17,18 @@ const FROM = process.env.RESEND_FROM ?? "onboarding@resend.dev";
  */
 const RECIPIENT_WINDOW_DAYS = 365;
 
+/**
+ * Emails either one tenant or everyone at a property.
+ *
+ * Both go through here so the sender, the template and the one-copy-each rule
+ * can only behave one way. Pass `tenant_email` for a single recipient; omit it
+ * to reach the whole house.
+ */
 export async function POST(request: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  const { property_address, subject, message } = await request.json();
+  const { property_address, tenant_email, subject, message } = await request.json();
 
   if (!property_address || !subject?.trim() || !message?.trim()) {
     return NextResponse.json(
@@ -30,25 +37,37 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - RECIPIENT_WINDOW_DAYS);
-
   const supabase = createAdminClient();
-  const { data: tickets, error } = await supabase
-    .from("tickets")
-    .select("tenant_email, tenant_name")
-    .eq("property_address", property_address)
-    .is("deleted_at", null)
-    .gte("created_at", cutoff.toISOString());
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  // One entry per address. A tenant with five tickets should get one email.
   const recipients = new Map<string, string>();
-  for (const t of tickets ?? []) {
-    if (t.tenant_email) recipients.set(t.tenant_email.toLowerCase(), t.tenant_name);
+
+  if (tenant_email) {
+    // Look the name up rather than trusting the client for it.
+    const { data } = await supabase
+      .from("tickets")
+      .select("tenant_name")
+      .eq("tenant_email", tenant_email)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+    recipients.set(tenant_email.toLowerCase(), data?.tenant_name ?? "");
+  } else {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - RECIPIENT_WINDOW_DAYS);
+
+    const { data, error } = await supabase
+      .from("tickets")
+      .select("tenant_email, tenant_name")
+      .eq("property_address", property_address)
+      .is("deleted_at", null)
+      .gte("created_at", cutoff.toISOString());
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    // One entry per address. A tenant with five tickets should get one email.
+    for (const t of data ?? []) {
+      if (t.tenant_email) recipients.set(t.tenant_email.toLowerCase(), t.tenant_name);
+    }
   }
 
   if (recipients.size === 0) {
@@ -68,7 +87,7 @@ export async function POST(request: NextRequest) {
         subject,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #111;">
-            <p>Hi ${name?.split(" ")[0] ?? "there"},</p>
+            <p>Hi ${escapeHtml(name?.split(" ")[0] || "there")},</p>
             <div style="white-space: pre-wrap; line-height: 1.6; margin: 16px 0;">${escapeHtml(message)}</div>
             <p style="color: #6b7280; font-size: 13px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
               Sent regarding ${escapeHtml(property_address)}.
@@ -84,7 +103,9 @@ export async function POST(request: NextRequest) {
   ).length;
 
   if (failed > 0) {
-    console.error(`Property message: ${failed}/${recipients.size} failed for ${property_address}`);
+    console.error(
+      `Tenant message: ${failed}/${recipients.size} failed for ${property_address}`
+    );
   }
 
   return NextResponse.json({ sent: recipients.size - failed, failed });
