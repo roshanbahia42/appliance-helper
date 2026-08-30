@@ -397,7 +397,7 @@ export default function Home() {
             </ol>
           </div>
 
-          {!isUrgent && (
+          {!isUrgent && !subcategory.noVideo && (
             <a
               href={`https://www.youtube.com/results?search_query=how+to+fix+${encodeURIComponent(subcategory.name)}`}
               target="_blank"

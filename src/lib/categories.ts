@@ -4,6 +4,8 @@ export type Subcategory = {
   description: string;
   tips: string[];
   isUrgent?: boolean;
+  /** Suppresses the "search YouTube" prompt where no video could help. */
+  noVideo?: boolean;
 };
 
 export type Category = {
@@ -383,6 +385,7 @@ export const CATEGORIES: Category[] = [
         id: "lost-key",
         name: "Lost Key",
         description: "Key lost or missing",
+        noVideo: true,
         tips: [
           "Retrace your steps and check everywhere you have been. Most keys turn up",
           "If you cannot find it, a replacement must be ordered and the cost is £80",
