@@ -56,7 +56,7 @@ export default function TicketDetail({
         <span className="text-gray-500">Tenant: </span>
         <span className="text-gray-900">
           {ticket.tenant_name}
-          {ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}
+          {ticket.tenant_room ? `, Room ${ticket.tenant_room}` : ""}
         </span>
       </div>
 
@@ -80,7 +80,7 @@ export default function TicketDetail({
             </button>
             {showDeliveryNote && (
               <p className="mt-1.5 text-xs text-red-800 bg-red-50 border border-red-100 rounded-md px-2 py-1.5">
-                Confirmation email failed — likely a typo.
+                Confirmation email failed, likely a typo.
               </p>
             )}
           </>
@@ -163,7 +163,7 @@ export default function TicketDetail({
       {inBin ? (
         <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
           <p className="text-xs text-amber-900">
-            In the bin — deleted permanently in {daysLeftInBin(ticket.deleted_at!)}{" "}
+            In the bin. Deleted permanently in {daysLeftInBin(ticket.deleted_at!)}{" "}
             {daysLeftInBin(ticket.deleted_at!) === 1 ? "day" : "days"}.
           </p>
           <div className="flex gap-2 mt-2">

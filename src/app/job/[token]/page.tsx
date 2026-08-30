@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import { notFound } from "next/navigation";
+import Brand from "@/app/Brand";
 
 type Ticket = {
   reference_number: string;
@@ -45,8 +46,11 @@ export default async function JobSheetPage({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-[#0f2044] px-5 py-6">
-        <div className="max-w-2xl mx-auto">
+      <header className="bg-[#0f2044]">
+        <div className="px-5 sm:px-8 py-4">
+          <Brand size="lg" />
+        </div>
+        <div className="max-w-2xl mx-auto px-5 pb-6">
           <h1 className="text-xl font-bold text-white">Maintenance Jobs</h1>
           <p className="text-blue-200 text-sm mt-0.5">
             {jobs.length} {jobs.length === 1 ? "job" : "jobs"} across{" "}
@@ -74,7 +78,7 @@ export default async function JobSheetPage({
                 >
                   <div className="flex items-start justify-between gap-3 mb-1">
                     <p className="font-semibold text-slate-900 text-sm">
-                      {job.tenant_room ? `Room ${job.tenant_room} — ` : ""}
+                      {job.tenant_room ? `Room ${job.tenant_room}: ` : ""}
                       {job.category}
                     </p>
                     {job.status === "escalated" && (

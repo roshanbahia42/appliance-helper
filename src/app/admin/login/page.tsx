@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import Brand from "@/app/Brand";
+import SiteHeader from "@/app/SiteHeader";
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -33,12 +33,9 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-[#0f2044] px-6 py-8">
-        <div className="max-w-xl mx-auto">
-          <Brand />
-          <p className="text-blue-200 text-sm mt-3">Maintenance dashboard</p>
-        </div>
-      </header>
+      <SiteHeader>
+        <p className="text-blue-200 text-sm">Maintenance dashboard</p>
+      </SiteHeader>
 
       <div className="flex flex-1 items-center justify-center p-6">
         <div className="bg-white border border-slate-200 rounded-xl p-8 w-full max-w-sm shadow-sm">

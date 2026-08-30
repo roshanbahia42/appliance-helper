@@ -1,7 +1,6 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import Brand from "@/app/Brand";
+import SiteHeader from "@/app/SiteHeader";
 import CloseTicketButton from "./CloseTicketButton";
 
 export default async function ConfirmationPage({
@@ -22,14 +21,9 @@ export default async function ConfirmationPage({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-[#0f2044] px-6 py-8">
-        <div className="max-w-xl mx-auto">
-          <Link href="/" className="inline-block hover:opacity-80 transition-opacity">
-            <Brand />
-          </Link>
-          <p className="text-blue-200 text-sm mt-1">Request received</p>
-        </div>
-      </header>
+      <SiteHeader>
+        <p className="text-blue-200 text-sm">Request received</p>
+      </SiteHeader>
 
       <div className="max-w-xl mx-auto p-6 flex flex-col gap-4">
         <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -89,7 +83,7 @@ export default async function ConfirmationPage({
                 return (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 text-sm text-blue-700 bg-slate-50 rounded-lg px-3 py-2 hover:bg-slate-100">
-                    <span>📎</span><span>Attachment {i + 1} — tap to download</span>
+                    <span>📎</span><span>Attachment {i + 1}, tap to download</span>
                   </a>
                 );
               })}

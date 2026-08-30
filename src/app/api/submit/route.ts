@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
   const reference = generateReference();
 
-  const issueDetail = subcategory ? `${category} — ${subcategory}` : category;
+  const issueDetail = subcategory ? `${category}: ${subcategory}` : category;
 
   const supabase = createAdminClient();
   const { error: dbError } = await supabase.from("tickets").insert({
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       from: FROM,
       ...(REPLY_TO ? { replyTo: REPLY_TO } : {}),
       to: tenant_email,
-      subject: `${isEmergency ? "⚠️ Urgent — " : ""}Maintenance Request Received — ${reference}`,
+      subject: `${isEmergency ? "Urgent: " : ""}Maintenance request received (${reference})`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #111;">
           <h2 style="color: #1d4ed8; margin-bottom: 4px;">Maintenance Request Received</h2>
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         from: FROM,
         replyTo: tenant_email,
         to: process.env.LANDLORD_EMAIL,
-        subject: `⚠️ URGENT maintenance request — ${reference}`,
+        subject: `URGENT maintenance request (${reference})`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #111;">
             <div style="background: #dc2626; color: white; padding: 16px; border-radius: 8px; margin-bottom: 20px;">

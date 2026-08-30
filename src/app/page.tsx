@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES, type Category, type Subcategory } from "@/lib/categories";
 import { iconForCategory } from "@/lib/categoryIcons";
-import Brand from "./Brand";
+import SiteHeader from "./SiteHeader";
 import { ArrowLeft, CirclePlay, Info, TriangleAlert, X } from "lucide-react";
 import {
   compressImage,
@@ -230,13 +230,11 @@ export default function Home() {
   if (solved) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <header className="bg-[#0f2044] px-6 pt-6 pb-5">
-          <div className="max-w-xl mx-auto">
+        <SiteHeader>
             <h1 className="text-xl font-bold text-white">All sorted!</h1>
             <p className="text-blue-200 text-sm mt-0.5">Glad the issue is resolved</p>
             <ProgressBar step={3} />
-          </div>
-        </header>
+        </SiteHeader>
         <div className="max-w-xl mx-auto p-6 flex flex-col gap-4">
           <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
             <div className="text-4xl mb-3">✅</div>
@@ -270,13 +268,10 @@ export default function Home() {
   if (step === 1) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <header className="bg-[#0f2044] px-6 py-8">
-          <div className="max-w-xl mx-auto">
-            <Brand />
-            <h1 className="text-2xl font-bold text-white mt-4">Report a maintenance issue</h1>
+        <SiteHeader>
+            <h1 className="text-2xl font-bold text-white">Report a maintenance issue</h1>
             <p className="text-blue-200 text-sm mt-1">Select the type of issue to get started</p>
-          </div>
-        </header>
+        </SiteHeader>
         <div className="max-w-xl mx-auto p-6">
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">
@@ -313,14 +308,12 @@ export default function Home() {
   if (step === 2 && category) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <header className="bg-[#0f2044] px-6 pt-6 pb-5">
-          <div className="max-w-xl mx-auto">
+        <SiteHeader>
             {category.isEmergency && <UrgentBadge label="Emergency" />}
             <h1 className="text-xl font-bold text-white">{category.name}</h1>
             <p className="text-white/70 text-sm mt-0.5">Select the specific issue</p>
             <ProgressBar step={2} />
-          </div>
-        </header>
+        </SiteHeader>
         <div className="max-w-xl mx-auto p-6 flex flex-col gap-3">
           <BackButton onClick={goBack} />
           {category.subcategories.map((sub) => (
@@ -357,16 +350,14 @@ export default function Home() {
 
     return (
       <div className="min-h-screen bg-slate-50">
-        <header className="bg-[#0f2044] px-6 pt-6 pb-5">
-          <div className="max-w-xl mx-auto">
+        <SiteHeader>
             {isUrgent && <UrgentBadge label={category.isEmergency ? "Emergency" : "Urgent"} />}
             <h1 className="text-xl font-bold text-white">{subcategory.name}</h1>
             <p className="text-white/70 text-sm mt-0.5">
               {isUrgent ? "Follow these steps immediately" : "Before you report, please try these steps"}
             </p>
             <ProgressBar step={isUrgent ? 3 : 4} />
-          </div>
-        </header>
+        </SiteHeader>
 
         <div className="max-w-xl mx-auto p-6 flex flex-col gap-4">
           <BackButton onClick={goBack} />
@@ -411,7 +402,7 @@ export default function Home() {
               className="flex items-center gap-2 text-sm text-slate-500 bg-white border border-slate-200 rounded-xl px-4 py-3 hover:bg-slate-50 transition-colors"
             >
               <CirclePlay className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <span>Search YouTube for a fix — <span className="text-slate-700 font-medium">{subcategory.name}</span></span>
+              <span>Search YouTube for a fix: <span className="text-slate-700 font-medium">{subcategory.name}</span></span>
             </a>
           )}
 
@@ -454,13 +445,11 @@ export default function Home() {
   if (step === 4) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <header className="bg-[#0f2044] px-6 pt-6 pb-5">
-          <div className="max-w-xl mx-auto">
+        <SiteHeader>
             <h1 className="text-xl font-bold text-white">Find Your Property</h1>
             <p className="text-blue-200 text-sm mt-0.5">Search your address to link this report to your property.</p>
             <ProgressBar step={history[history.length - 2] === 2 ? 3 : 4} />
-          </div>
-        </header>
+        </SiteHeader>
         <div className="max-w-xl mx-auto p-6">
           <BackButton onClick={goBack} />
           <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">
@@ -513,11 +502,11 @@ export default function Home() {
                   <p className="mt-2 text-xs text-slate-500">
                     {addressLookupBroken
                       ? "Address search is temporarily unavailable. Please try again shortly."
-                      : "No matches — make sure you start with your house or flat number."}
+                      : "No matches. Make sure you start with your house or flat number."}
                   </p>
                 )}
             </div>
-            <p className="text-xs text-slate-400">Start with your house number, then the street — then pick your address from the list.</p>
+            <p className="text-xs text-slate-400">Start with your house number, then the street, then pick your address from the list.</p>
           </div>
           <button
             onClick={() => goTo(history[history.length - 2] === 2 ? 3 : 5)}
@@ -535,13 +524,11 @@ export default function Home() {
   if (step === 5) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <header className="bg-[#0f2044] px-6 pt-6 pb-5">
-          <div className="max-w-xl mx-auto">
+        <SiteHeader>
             <h1 className="text-xl font-bold text-white">Your Details</h1>
-            <p className="text-blue-200 text-sm mt-0.5">Almost done — just a few more details</p>
+            <p className="text-blue-200 text-sm mt-0.5">Almost done, just a few more details</p>
             <ProgressBar step={5} />
-          </div>
-        </header>
+        </SiteHeader>
         <div className="max-w-xl mx-auto p-6">
           <BackButton onClick={goBack} />
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -558,7 +545,7 @@ export default function Home() {
                   <span className="text-slate-400">Issue: </span>
                   <span className="text-slate-600">
                     {category.name}
-                    {subcategory ? ` — ${subcategory.name}` : ""}
+                    {subcategory ? `: ${subcategory.name}` : ""}
                   </span>
                 </div>
               )}
@@ -655,7 +642,7 @@ export default function Home() {
                   Photos or videos*
                 </label>
                 <p className="text-xs text-slate-400 mb-2">
-                  Up to 5 files. Videos must be under 25MB — photos are compressed automatically.
+                  Up to 5 files. Videos must be under 25MB. Photos are compressed automatically.
                 </p>
                 {/* The native input is hidden: because we clear its value after
                     every pick, its own "No file chosen" label would always read
@@ -689,7 +676,7 @@ export default function Home() {
                       );
                       if (oversized.length > 0) {
                         setError(
-                          `${oversized.map((f) => f.name).join(", ")} is too large — videos must be under 25MB, photos under 50MB`
+                          `${oversized.map((f) => f.name).join(", ")} is too large. Videos must be under 25MB and photos under 50MB`
                         );
                         return;
                       }

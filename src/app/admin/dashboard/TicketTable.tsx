@@ -303,7 +303,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               <>
                 <span className="text-sm text-gray-700">
                   {alreadySentCount === selectedTickets.length
-                    ? `${alreadySentCount === 1 ? "This has" : "These have"} already been sent — send again?`
+                    ? `${alreadySentCount === 1 ? "This has" : "These have"} already been sent. Send again?`
                     : `${alreadySentCount} of ${selectedTickets.length} already sent to the handyman.`}
                 </span>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2 shrink-0">
@@ -593,7 +593,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 >
                   <div className="flex justify-between items-start gap-2 mb-1">
                     <span className="font-medium text-gray-900 text-sm">
-                      {ticket.tenant_name}{ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}
+                      {ticket.tenant_name}{ticket.tenant_room ? `, Room ${ticket.tenant_room}` : ""}
                       {ticket.admin_notes && (
                         <span className="ml-1 text-xs" title="Has notes">📝</span>
                       )}

@@ -15,10 +15,12 @@ export default function Brand({
 }: {
   /** "light" for the navy header, "dark" for white backgrounds. */
   tone?: "light" | "dark";
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
 }) {
-  const markSize = size === "sm" ? "h-6 w-6" : "h-8 w-8";
-  const nameSize = size === "sm" ? "text-base" : "text-lg";
+  const markSize =
+    size === "sm" ? "h-7 w-7" : size === "lg" ? "h-11 w-11" : "h-9 w-9";
+  const nameSize =
+    size === "sm" ? "text-base" : size === "lg" ? "text-2xl" : "text-xl";
 
   return (
     <span className="inline-flex items-center gap-2.5">
