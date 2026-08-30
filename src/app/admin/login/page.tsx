@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import Brand from "@/app/Brand";
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -34,10 +35,8 @@ export default function AdminLogin() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="bg-[#0f2044] px-6 py-8">
         <div className="max-w-xl mx-auto">
-          <h1 className="text-2xl font-bold text-white">
-            Student Maintenance Hub
-          </h1>
-          <p className="text-blue-200 text-sm mt-1">Landlord dashboard</p>
+          <Brand />
+          <p className="text-blue-200 text-sm mt-3">Maintenance dashboard</p>
         </div>
       </header>
 

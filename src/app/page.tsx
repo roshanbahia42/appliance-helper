@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES, type Category, type Subcategory } from "@/lib/categories";
 import { iconForCategory } from "@/lib/categoryIcons";
+import Brand from "./Brand";
 import { ArrowLeft, CirclePlay, Info, TriangleAlert, X } from "lucide-react";
 import {
   compressImage,
@@ -271,7 +272,8 @@ export default function Home() {
       <div className="min-h-screen bg-slate-50">
         <header className="bg-[#0f2044] px-6 py-8">
           <div className="max-w-xl mx-auto">
-            <h1 className="text-2xl font-bold text-white">Student Maintenance Hub</h1>
+            <Brand />
+            <h1 className="text-2xl font-bold text-white mt-4">Report a maintenance issue</h1>
             <p className="text-blue-200 text-sm mt-1">Select the type of issue to get started</p>
           </div>
         </header>

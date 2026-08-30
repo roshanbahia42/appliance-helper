@@ -13,12 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Student Maintenance Hub",
-  description: "Report maintenance issues at your student property",
+  title: "Eastwinds Maintenance",
+  description: "Report a maintenance issue at your Eastwinds property",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Maintenance",
+    title: "Eastwinds",
   },
   other: {
     "mobile-web-app-capable": "yes",

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Brand from "@/app/Brand";
 import CloseTicketButton from "./CloseTicketButton";
 
 export default async function ConfirmationPage({
@@ -24,7 +25,7 @@ export default async function ConfirmationPage({
       <header className="bg-[#0f2044] px-6 py-8">
         <div className="max-w-xl mx-auto">
           <Link href="/" className="inline-block hover:opacity-80 transition-opacity">
-            <h1 className="text-2xl font-bold text-white">Student Maintenance Hub</h1>
+            <Brand />
           </Link>
           <p className="text-blue-200 text-sm mt-1">Request received</p>
         </div>
