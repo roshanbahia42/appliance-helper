@@ -138,12 +138,12 @@ export default function TicketDetail({
       </div>
 
       <div className="mt-2">
-        <span className="text-gray-500 block mb-1">Your notes:</span>
+        <span className="text-gray-500 block mb-1">Your notes to the handyman:</span>
         <textarea
           value={noteDraft}
           onChange={(e) => setNoteDraft(e.target.value)}
           rows={3}
-          placeholder="Private — only you can see this"
+          placeholder="Included in the message sent to the handyman"
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
         />
         {noteDraft !== (ticket.admin_notes ?? "") && (
@@ -201,10 +201,22 @@ export default function TicketDetail({
                 disabled={busy}
                 className="w-full bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
-                {actionLoading === "escalate" ? "Saving..." : "Escalate"}
+                {actionLoading === "escalate" ? "Saving..." : "Mark urgent"}
               </button>
             )}
-            {(ticket.status === "resolved" || ticket.status === "escalated") && (
+            {/* Both call reopen, which sets the status back to open. The label
+                differs because un-flagging an urgent ticket isn't "reopening"
+                anything. */}
+            {ticket.status === "escalated" && (
+              <button
+                onClick={() => onStatusChange(ticket.reference_number, "reopen")}
+                disabled={busy}
+                className="w-full bg-white border border-gray-300 text-gray-600 rounded-lg px-3 py-2 text-sm font-medium hover:border-gray-400 disabled:opacity-50 transition-colors"
+              >
+                {actionLoading === "reopen" ? "Saving..." : "Remove urgent flag"}
+              </button>
+            )}
+            {ticket.status === "resolved" && (
               <button
                 onClick={() => onStatusChange(ticket.reference_number, "reopen")}
                 disabled={busy}

@@ -1,5 +1,5 @@
 /**
- * Ticket shape and the pure logic around it — no React, no data fetching, so
+ * Ticket shape and the pure logic around it. No React and no data fetching, so
  * everything here is trivially testable and reusable by any view.
  */
 
@@ -41,6 +41,16 @@ export const BIN_RETENTION_DAYS = 30;
  */
 export const STALE_AFTER_DAYS = 14;
 
+/**
+ * The database stores "escalated"; the landlady's word for it is "urgent". Only
+ * the label differs, so existing rows and API routes are untouched.
+ */
+export const STATUS_LABELS: Record<string, string> = {
+  open: "Open",
+  escalated: "Urgent",
+  resolved: "Resolved",
+};
+
 export const STATUS_COLORS: Record<string, string> = {
   open: "bg-yellow-100 text-yellow-800",
   resolved: "bg-green-100 text-green-800",
@@ -72,13 +82,14 @@ export function daysLeftInBin(deletedAt: string) {
 
 /**
  * Text for a single job. The handyman deliberately gets no tenant email or
- * phone number — access is arranged through the landlady.
+ * phone number, since access is arranged through the landlady.
  */
 export function formatHandymanText(ticket: Ticket) {
   return [
-    `Property: ${ticket.property_address}${ticket.tenant_room ? ` — Room ${ticket.tenant_room}` : ""}`,
+    `Property: ${ticket.property_address}${ticket.tenant_room ? `, Room ${ticket.tenant_room}` : ""}`,
     `Issue: ${ticket.category}`,
     ticket.description ? `Details: ${ticket.description}` : null,
+    ticket.admin_notes ? `Note: ${ticket.admin_notes}` : null,
     (ticket.media_urls?.length ?? 0) > 0
       ? `\nPhotos/videos:\n${ticket.media_urls!.join("\n")}`
       : null,
@@ -88,9 +99,9 @@ export function formatHandymanText(ticket: Ticket) {
 }
 
 /**
- * Several jobs as one message, grouped by property — the format the landlady
- * already used by hand, so the handyman sees nothing new. Duplicates for one
- * fault end up as adjacent lines, which is how they get spotted.
+ * Several jobs as one message, grouped by property. This is the format the
+ * landlady already used by hand, so the handyman sees nothing new. Duplicates
+ * for one fault end up as adjacent lines, which is how they get spotted.
  */
 export function formatBatchText(tickets: Ticket[], jobSheetUrl: string) {
   const byProperty = tickets.reduce<Record<string, Ticket[]>>((acc, ticket) => {
@@ -107,8 +118,9 @@ export function formatBatchText(tickets: Ticket[], jobSheetUrl: string) {
     lines.push(address);
     for (const ticket of byProperty[address]) {
       lines.push(
-        `• ${ticket.tenant_room ? `Room ${ticket.tenant_room} — ` : ""}${ticket.category}`
+        `• ${ticket.tenant_room ? `Room ${ticket.tenant_room}: ` : ""}${ticket.category}`
       );
+      if (ticket.admin_notes) lines.push(`  ${ticket.admin_notes}`);
     }
     lines.push("");
   }
@@ -157,8 +169,8 @@ export const BULK_CONFIRM: Record<
   },
   escalate: {
     prompt: (n) => `Flag ${n} ${n === 1 ? "ticket" : "tickets"} as urgent?`,
-    label: "Yes, escalate",
-    loading: "Escalating...",
+    label: "Yes, mark urgent",
+    loading: "Saving...",
     className: "bg-red-600 hover:bg-red-700",
   },
 };

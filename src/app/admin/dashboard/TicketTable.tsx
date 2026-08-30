@@ -8,6 +8,7 @@ import {
   SORT_OPTIONS,
   SORT_VALUES,
   STATUS_COLORS,
+  STATUS_LABELS,
   formatAge,
   formatBatchText,
   formatHandymanText,
@@ -15,6 +16,7 @@ import {
   type BulkAction,
   type Ticket,
 } from "@/lib/tickets";
+import { X } from "lucide-react";
 import AttachmentLightbox from "./AttachmentLightbox";
 import TicketDetail from "./TicketDetail";
 
@@ -189,6 +191,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
 
   const selectedTickets = tickets.filter((t) => selectedIds.has(t.id));
   const alreadySentCount = selectedTickets.filter((t) => t.sent_to_handyman_at).length;
+
+  // Offer an action only where it would change something. Keying off the tab
+  // meant "Mark urgent" showed for tickets that were already urgent.
+  const canMarkUrgent = selectedTickets.some((t) => t.status !== "escalated");
+  const canResolve = selectedTickets.some((t) => t.status !== "resolved");
+  const canReopen = selectedTickets.some((t) => t.status !== "open");
 
   /** Re-sending is allowed but never silent — the handyman would just get it twice. */
   const requestSend = () => {
@@ -380,7 +388,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                       >
                         🗑 Bin
                       </button>
-                      {filterStatus !== "escalated" && filterStatus !== "resolved" && (
+                      {canMarkUrgent && (
                         <button
                           onClick={() => setConfirmBulk("escalate")}
                           className="border border-red-300 text-red-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-red-50"
@@ -388,20 +396,22 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                           Urgent
                         </button>
                       )}
-                      {filterStatus === "resolved" ? (
-                        <button
-                          onClick={() => setConfirmBulk("reopen")}
-                          className="bg-blue-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-blue-700"
-                        >
-                          Reopen
-                        </button>
-                      ) : (
+                      {canResolve ? (
                         <button
                           onClick={() => setConfirmBulk("resolve")}
                           className="bg-green-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-green-700"
                         >
                           Resolve
                         </button>
+                      ) : (
+                        canReopen && (
+                          <button
+                            onClick={() => setConfirmBulk("reopen")}
+                            className="bg-blue-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-blue-700"
+                          >
+                            Reopen
+                          </button>
+                        )
                       )}
                       <button
                         onClick={requestSend}
@@ -427,9 +437,9 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
             <button
               onClick={() => setSelected(null)}
               aria-label="Close ticket"
-              className="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center"
+              className="w-11 h-11 -mr-2 flex items-center justify-center text-gray-500 hover:text-gray-800"
             >
-              ×
+              <X className="w-6 h-6" />
             </button>
           </div>
           <div className="p-5">
@@ -460,7 +470,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                   setSelected(null);
                   clearSelection();
                 }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   filterStatus === f
                     ? "bg-blue-600 text-white"
                     : "bg-white border border-gray-300 text-gray-600 hover:border-blue-400"
@@ -470,7 +480,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                   "🗑"
                 ) : (
                   <>
-                    {f}
+                    {f === "all" ? "All" : STATUS_LABELS[f] ?? f}
                     <span
                       className={`ml-1.5 text-xs ${filterStatus === f ? "text-white/70" : "text-gray-400"}`}
                     >
@@ -581,8 +591,8 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                         <span className="ml-1 text-xs" title="Has notes">📝</span>
                       )}
                     </span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize shrink-0 ${STATUS_COLORS[ticket.status] ?? "bg-gray-100 text-gray-600"}`}>
-                      {ticket.status}
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${STATUS_COLORS[ticket.status] ?? "bg-gray-100 text-gray-600"}`}>
+                      {STATUS_LABELS[ticket.status] ?? ticket.status}
                     </span>
                   </div>
                   <p className="text-xs text-gray-600 truncate">{ticket.category}</p>
@@ -678,8 +688,8 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     <td className="px-4 py-3 text-gray-600 max-w-[150px] truncate">{ticket.property_address}</td>
                     <td className="px-4 py-3 text-gray-600">{ticket.category}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${STATUS_COLORS[ticket.status] ?? "bg-gray-100 text-gray-600"}`}>
-                        {ticket.status}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[ticket.status] ?? "bg-gray-100 text-gray-600"}`}>
+                        {STATUS_LABELS[ticket.status] ?? ticket.status}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -719,9 +729,9 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               <button
                 onClick={() => setSelected(null)}
                 aria-label="Close ticket"
-                className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+                className="w-9 h-9 -mr-2 -mt-1 flex items-center justify-center text-gray-500 hover:text-gray-800"
               >
-                ×
+                <X className="w-5 h-5" />
               </button>
             </div>
             <TicketDetail

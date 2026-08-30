@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES, type Category, type Subcategory } from "@/lib/categories";
 import { iconForCategory } from "@/lib/categoryIcons";
+import { ArrowLeft, CirclePlay, Info, TriangleAlert, X } from "lucide-react";
 import {
   compressImage,
   fileKey,
@@ -52,7 +53,8 @@ function BackButton({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className="flex items-center gap-1 text-sm font-medium text-[#0f2044] hover:opacity-70 transition-opacity mb-2"
     >
-      ← Back
+      <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+      Back
     </button>
   );
 }
@@ -60,7 +62,8 @@ function BackButton({ onClick }: { onClick: () => void }) {
 function UrgentBadge({ label }: { label: string }) {
   return (
     <span className="inline-flex items-center gap-1 bg-red-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full mb-3">
-      ⚠ {label}
+      <TriangleAlert className="w-3 h-3" aria-hidden="true" />
+      {label}
     </span>
   );
 }
@@ -371,7 +374,11 @@ export default function Home() {
             }`}
           >
             <div className="flex items-center gap-2 mb-4">
-              <span className="text-xl">{isUrgent ? "⚠️" : "ℹ️"}</span>
+              {isUrgent ? (
+                <TriangleAlert className="w-5 h-5 text-red-600" aria-hidden="true" />
+              ) : (
+                <Info className="w-5 h-5 text-blue-600" aria-hidden="true" />
+              )}
               <h2 className={`font-semibold text-sm ${isUrgent ? "text-red-900" : "text-blue-900"}`}>
                 {isUrgent ? "Emergency steps" : "Troubleshooting tips"}
               </h2>
@@ -401,7 +408,7 @@ export default function Home() {
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-sm text-slate-500 bg-white border border-slate-200 rounded-xl px-4 py-3 hover:bg-slate-50 transition-colors"
             >
-              <span>▶️</span>
+              <CirclePlay className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span>Search YouTube for a fix — <span className="text-slate-700 font-medium">{subcategory.name}</span></span>
             </a>
           )}
@@ -705,9 +712,9 @@ export default function Home() {
                         type="button"
                         aria-label={`Remove ${file.name}`}
                         onClick={() => setFiles(files.filter((f) => fileKey(f) !== fileKey(file)))}
-                        className="ml-2 text-slate-400 hover:text-slate-600 shrink-0 text-base leading-none"
+                        className="ml-2 w-8 h-8 -my-1 shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-700"
                       >
-                        ×
+                        <X className="w-4 h-4" />
                       </button>
                     </li>
                   ))}

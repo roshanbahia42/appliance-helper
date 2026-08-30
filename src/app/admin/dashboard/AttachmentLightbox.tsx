@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { X } from "lucide-react";
 
 /**
  * Full-screen viewer for a single attachment.
@@ -55,10 +56,10 @@ export default function AttachmentLightbox({
 
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 text-white text-2xl leading-none hover:opacity-70"
+        className="absolute top-3 right-3 w-11 h-11 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60"
         aria-label="Close"
       >
-        ×
+        <X className="w-6 h-6" />
       </button>
     </div>
   );
