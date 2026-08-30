@@ -19,6 +19,7 @@ import {
 import { X } from "lucide-react";
 import AttachmentLightbox from "./AttachmentLightbox";
 import TicketDetail from "./TicketDetail";
+import MessageProperty from "./MessageProperty";
 
 // Every confirmation currently fails, because RESEND_FROM still points at the
 // sandbox sender that only delivers to verified addresses. The warning would
@@ -549,6 +550,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               </button>
             )}
           </div>
+
+          {filterProperty !== "all" && (
+            <div className="mb-4">
+              <MessageProperty property={filterProperty} />
+            </div>
+          )}
 
           {/* Mobile: card list */}
           <div className="flex flex-col gap-2 md:hidden">

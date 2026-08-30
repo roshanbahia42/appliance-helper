@@ -72,8 +72,8 @@ export const CATEGORIES: Category[] = [
         description: "Complete heating failure in dangerous cold weather",
         isUrgent: true,
         tips: [
-          "Check the thermostat settings and try resetting the boiler",
-          "Check for tripped circuit breakers in the fuse box",
+          "Check the heating programmer is set to continuous for heating",
+          "Check the boiler power switch is turned on. It is usually on the wall near the boiler",
           "Use safe portable heaters if available, but never leave them unattended",
           `Contact the property managers immediately on ${contactLine}. Heating failure in extreme cold is an emergency`,
           "Keep internal doors closed to conserve heat in occupied rooms",

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { requireAdmin } from "@/utils/supabase/requireAdmin";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ reference: string }> }
 ) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const { reference } = await params;
   const { notes } = await request.json();
 

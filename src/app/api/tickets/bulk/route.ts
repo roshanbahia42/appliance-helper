@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { requireAdmin } from "@/utils/supabase/requireAdmin";
 import { deleteTicketMedia } from "@/lib/storage";
 
 const ACTIONS = ["delete", "restore", "purge", "resolve", "reopen", "escalate"] as const;
 type Action = (typeof ACTIONS)[number];
 
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const { reference_numbers, action } = await request.json();
 
   if (!Array.isArray(reference_numbers) || reference_numbers.length === 0) {
