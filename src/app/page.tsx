@@ -130,6 +130,21 @@ export default function Home() {
     return urls;
   };
 
+  /** Back to a blank step 1. The logo uses this because "/" is already here. */
+  const startAgain = () => {
+    setSolved(false);
+    setHistory([1]);
+    setCategory(null);
+    setSubcategory(null);
+    setPropertySearch("");
+    setSelectedProperty("");
+    setSuggestions([]);
+    setForm(EMPTY_FORM);
+    setFiles([]);
+    setError("");
+    setEmailError("");
+  };
+
   const goTo = (s: Step) => setHistory((prev) => [...prev, s]);
   const goBack = () => {
     if (history.length > 1) {
@@ -230,7 +245,7 @@ export default function Home() {
   if (solved) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <SiteHeader>
+        <SiteHeader onHome={startAgain}>
             <h1 className="text-xl font-bold text-white">All sorted!</h1>
             <p className="text-blue-200 text-sm mt-0.5">Glad the issue is resolved</p>
             <ProgressBar step={3} />
@@ -242,19 +257,7 @@ export default function Home() {
             <p className="text-green-700 text-sm mt-1">No further action needed.</p>
           </div>
           <button
-            onClick={() => {
-              setSolved(false);
-              setHistory([1]);
-              setCategory(null);
-              setSubcategory(null);
-              setPropertySearch("");
-              setSelectedProperty("");
-              setSuggestions([]);
-              setForm(EMPTY_FORM);
-              setFiles([]);
-              setError("");
-              setEmailError("");
-            }}
+            onClick={startAgain}
             className="text-sm text-slate-500 underline text-center"
           >
             Report a different issue
@@ -268,7 +271,7 @@ export default function Home() {
   if (step === 1) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <SiteHeader>
+        <SiteHeader onHome={startAgain}>
             <h1 className="text-2xl font-bold text-white">Report a maintenance issue</h1>
             <p className="text-blue-200 text-sm mt-1">Select the type of issue to get started</p>
         </SiteHeader>
@@ -308,7 +311,7 @@ export default function Home() {
   if (step === 2 && category) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <SiteHeader>
+        <SiteHeader onHome={startAgain}>
             {category.isEmergency && <UrgentBadge label="Emergency" />}
             <h1 className="text-xl font-bold text-white">{category.name}</h1>
             <p className="text-white/70 text-sm mt-0.5">Select the specific issue</p>
@@ -350,7 +353,7 @@ export default function Home() {
 
     return (
       <div className="min-h-screen bg-slate-50">
-        <SiteHeader>
+        <SiteHeader onHome={startAgain}>
             {isUrgent && <UrgentBadge label={category.isEmergency ? "Emergency" : "Urgent"} />}
             <h1 className="text-xl font-bold text-white">{subcategory.name}</h1>
             <p className="text-white/70 text-sm mt-0.5">
@@ -445,7 +448,7 @@ export default function Home() {
   if (step === 4) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <SiteHeader>
+        <SiteHeader onHome={startAgain}>
             <h1 className="text-xl font-bold text-white">Find Your Property</h1>
             <p className="text-blue-200 text-sm mt-0.5">Search your address to link this report to your property.</p>
             <ProgressBar step={history[history.length - 2] === 2 ? 3 : 4} />
@@ -524,7 +527,7 @@ export default function Home() {
   if (step === 5) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <SiteHeader>
+        <SiteHeader onHome={startAgain}>
             <h1 className="text-xl font-bold text-white">Your Details</h1>
             <p className="text-blue-200 text-sm mt-0.5">Almost done, just a few more details</p>
             <ProgressBar step={5} />
