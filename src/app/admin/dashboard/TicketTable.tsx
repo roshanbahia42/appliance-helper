@@ -16,7 +16,7 @@ import {
   type BulkAction,
   type Ticket,
 } from "@/lib/tickets";
-import { Check, StickyNote, Trash2, X } from "lucide-react";
+import { Check, FileText, Trash2, X } from "lucide-react";
 import AttachmentLightbox from "./AttachmentLightbox";
 import TicketDetail from "./TicketDetail";
 import MessageProperty from "./MessageProperty";
@@ -598,7 +598,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     <span className="font-medium text-gray-900 text-sm">
                       {ticket.tenant_name}{ticket.tenant_room ? `, Room ${ticket.tenant_room}` : ""}
                       {ticket.admin_notes && (
-                        <StickyNote className="inline w-3.5 h-3.5 ml-1 text-gray-400 align-[-2px]" aria-label="Has notes" />
+                        <span
+                          className="inline-flex align-middle ml-1 text-gray-400"
+                          title="Has notes"
+                        >
+                          <FileText className="w-4 h-4" aria-label="Has notes" />
+                        </span>
                       )}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${STATUS_COLORS[ticket.status] ?? "bg-gray-100 text-gray-600"}`}>
@@ -693,7 +698,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">
                       {ticket.reference_number}
                       {ticket.admin_notes && (
-                        <StickyNote className="inline w-3.5 h-3.5 ml-1 text-gray-400 align-[-2px]" aria-label="Has notes" />
+                        <span
+                          className="inline-flex align-middle ml-1 text-gray-400"
+                          title="Has notes"
+                        >
+                          <FileText className="w-4 h-4" aria-label="Has notes" />
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-gray-900">{ticket.tenant_name}</td>

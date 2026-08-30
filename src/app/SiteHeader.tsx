@@ -4,27 +4,39 @@ import Brand from "./Brand";
 /**
  * Navy header used across every screen.
  *
- * On desktop the lockup and the page title sit side by side on one row. Stacked
- * bands left dead space twice over: to the right of the logo, and above a title
- * that had drifted to the bottom of a tall navy block. Below `sm` they stack,
- * which is the only thing that fits on a phone.
+ * From lg up the lockup is pinned to the far left and the title block is
+ * centred, so it lines up with the max-w-xl content column below it. Centring
+ * the pair together instead would push the title right of everything else on
+ * the page.
  *
- * The lockup always links home. It's the only persistent way back from an inner
- * step.
+ * Below lg they stack, which is the only arrangement that fits a phone and
+ * avoids the logo colliding with the centred title on a narrow laptop.
+ *
+ * The lockup always links home. It's the only persistent way back from an
+ * inner step.
  */
-export default function SiteHeader({ children }: { children?: React.ReactNode }) {
+export default function SiteHeader({
+  children,
+  width = "max-w-xl",
+}: {
+  children?: React.ReactNode;
+  /** Match the page's own content column so the title aligns with it. */
+  width?: string;
+}) {
   return (
-    <header className="bg-[#0f2044]">
-      <div className="max-w-3xl mx-auto px-5 sm:px-8 py-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-7">
+    <header className="bg-[#0f2044] px-5 sm:px-8 py-5">
+      <div className="relative flex flex-col gap-4 lg:block lg:gap-0">
         <Link
           href="/"
           aria-label="Eastwinds home"
-          className="shrink-0 hover:opacity-80 transition-opacity"
+          className="self-start shrink-0 hover:opacity-80 transition-opacity lg:absolute lg:left-0 lg:top-1/2 lg:-translate-y-1/2"
         >
           <Brand size="lg" />
         </Link>
         {children && (
-          <div className="flex-1 min-w-0 sm:border-l sm:border-white/15 sm:pl-7">
+          <div
+            className={`${width} mx-auto w-full lg:border-l lg:border-white/15 lg:pl-7`}
+          >
             {children}
           </div>
         )}

@@ -46,12 +46,12 @@ export default async function JobSheetPage({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-[#0f2044]">
-        <div className="max-w-3xl mx-auto px-5 sm:px-8 py-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-7">
-          <div className="shrink-0">
+      <header className="bg-[#0f2044] px-5 sm:px-8 py-5">
+        <div className="relative flex flex-col gap-4 lg:block lg:gap-0">
+          <div className="self-start shrink-0 lg:absolute lg:left-0 lg:top-1/2 lg:-translate-y-1/2">
             <Brand size="lg" />
           </div>
-          <div className="flex-1 min-w-0 sm:border-l sm:border-white/15 sm:pl-7">
+          <div className="max-w-2xl mx-auto w-full lg:border-l lg:border-white/15 lg:pl-7">
             <h1 className="text-xl font-bold text-white">Maintenance Jobs</h1>
             <p className="text-blue-200 text-sm mt-0.5">
               {jobs.length} {jobs.length === 1 ? "job" : "jobs"} across{" "}
