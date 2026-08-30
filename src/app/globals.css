@@ -28,6 +28,15 @@ button {
   cursor: pointer;
 }
 
+/* Everything is sized in rem, so lifting the root size scales the whole app.
+   14px body text is fine on a desktop monitor and small on a phone held at
+   arm's length, which is where most of this gets read. */
+@media (max-width: 767px) {
+  html {
+    font-size: 17px;
+  }
+}
+
 /* iOS Safari zooms the viewport when a form control smaller than 16px receives
    focus, and never zooms back out — so the rest of the flow is left scrolled
    sideways. Forcing 16px on small screens is the only fix that doesn't involve

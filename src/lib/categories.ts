@@ -468,7 +468,7 @@ export const CATEGORIES: Category[] = [
         tips: [
           "Identify and seal obvious entry points. Check gaps around pipes, skirting boards, and external doors",
           "Remove accessible food sources: keep worktops clean and store food in sealed containers",
-          "Check that communal bin areas are not overflowing and attracting pests",
+          "Check that your bins are not overflowing and attracting pests",
           "Take photos of any droppings, damage, or pest activity to include with your report",
           "Do not use pesticide sprays without permission. Some can damage surfaces or affect other residents",
         ],
@@ -687,10 +687,10 @@ export const CATEGORIES: Category[] = [
       {
         id: "entry-intercom",
         name: "Entry Phone or Intercom Not Working",
-        description: "Front door intercom or door entry system not functioning",
+        description: "Cannot hear or speak to visitors on the intercom",
         tips: [
           "Check that the handset inside the property is fully seated in its cradle",
-          "Check whether the door still opens with a key, so we know whether it is the intercom or the lock",
+          "Note whether the problem is hearing the caller, being heard, or no sound at all. It helps us identify the fault",
         ],
       },
     ],
