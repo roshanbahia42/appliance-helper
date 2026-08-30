@@ -747,8 +747,11 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
 
         {/* Desktop: side panel */}
         {selected && (
-          <div className="hidden md:block w-80 shrink-0 bg-white border border-gray-200 rounded-xl p-5 h-fit sticky top-6">
-            <div className="flex justify-between items-start mb-4">
+          /* Capped to the viewport with its own scrollbar. Left to grow with
+             h-fit, a long ticket made the page scroll through the whole list
+             before the panel's own content moved. */
+          <div className="hidden md:flex md:flex-col w-80 shrink-0 bg-white border border-gray-200 rounded-xl sticky top-6 max-h-[calc(100vh-3rem)]">
+            <div className="flex justify-between items-start px-5 pt-4 pb-3 border-b border-gray-100 shrink-0">
               <h3 className="font-semibold text-gray-900">{selected.reference_number}</h3>
               <button
                 onClick={() => setSelected(null)}
@@ -758,17 +761,19 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <TicketDetail
-              key={selected.id}
-              ticket={selected}
-              actionLoading={actionLoading}
-              showDeliveryWarnings={SHOW_DELIVERY_WARNINGS}
-              onStatusChange={updateStatus}
-              onBinAction={binTicket}
-              onSaveNote={saveNote}
-              onSendToHandyman={whatsappForHandyman}
-              onOpenAttachment={setLightboxUrl}
-            />
+            <div className="overflow-y-auto px-5 py-4">
+              <TicketDetail
+                key={selected.id}
+                ticket={selected}
+                actionLoading={actionLoading}
+                showDeliveryWarnings={SHOW_DELIVERY_WARNINGS}
+                onStatusChange={updateStatus}
+                onBinAction={binTicket}
+                onSaveNote={saveNote}
+                onSendToHandyman={whatsappForHandyman}
+                onOpenAttachment={setLightboxUrl}
+              />
+            </div>
           </div>
         )}
       </div>
