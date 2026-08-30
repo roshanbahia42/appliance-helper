@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import {
   BIN_RETENTION_DAYS,
   daysLeftInBin,
@@ -253,9 +254,10 @@ export default function TicketDetail({
             ) : (
               <button
                 onClick={() => setConfirmBin(true)}
-                className="w-full text-xs text-gray-400 hover:text-red-500 transition-colors py-1"
+                className="w-full flex items-center justify-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors py-1"
               >
-                🗑 Move to bin
+                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                Move to bin
               </button>
             )}
           </div>

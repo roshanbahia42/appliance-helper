@@ -16,7 +16,7 @@ import {
   type BulkAction,
   type Ticket,
 } from "@/lib/tickets";
-import { X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import AttachmentLightbox from "./AttachmentLightbox";
 import TicketDetail from "./TicketDetail";
 import MessageProperty from "./MessageProperty";
@@ -385,9 +385,10 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     <>
                       <button
                         onClick={() => setConfirmBulk("delete")}
-                        className="border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
+                        className="flex items-center justify-center gap-1.5 border border-gray-300 text-gray-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-50"
                       >
-                        🗑 Bin
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
+                        Bin
                       </button>
                       {canMarkUrgent && (
                         <button
@@ -471,14 +472,16 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                   setSelected(null);
                   clearSelection();
                 }}
+                // The bin tab is icon-only, so it needs a name of its own.
+                aria-label={f === "bin" ? "Bin" : undefined}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   filterStatus === f
                     ? "bg-blue-600 text-white"
                     : "bg-white border border-gray-300 text-gray-600 hover:border-blue-400"
-                } ${f === "bin" ? "ml-auto" : ""}`}
+                } ${f === "bin" ? "ml-auto flex items-center" : ""}`}
               >
                 {f === "bin" ? (
-                  "🗑"
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
                 ) : (
                   <>
                     {f === "all" ? "All" : STATUS_LABELS[f] ?? f}
