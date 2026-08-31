@@ -225,7 +225,11 @@ export default function Home() {
           category: category!.name,
           subcategory: subcategory?.name ?? null,
           description: form.description,
-          isEmergency: category!.isEmergency ?? false,
+          // Must match the `isUrgent` the tips screen showed. Keying off the
+          // category alone filed a sounding carbon monoxide alarm as routine,
+          // because it lives under Security and Safety rather than Emergency.
+          isEmergency:
+            (subcategory?.isUrgent ?? false) || (category!.isEmergency ?? false),
           media_urls: mediaUrls,
         }),
       });
