@@ -6,6 +6,10 @@ import { requireAdmin } from "@/utils/supabase/requireAdmin";
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.RESEND_FROM ?? "onboarding@resend.dev";
 
+// The sending subdomain is send-only and can't receive, so without this a
+// tenant hitting reply gets a bounce. Points at the landlady's real inbox.
+const REPLY_TO = process.env.RESEND_REPLY_TO;
+
 /**
  * Only tenants who have reported something within this window are messaged.
  *
@@ -83,6 +87,7 @@ export async function POST(request: NextRequest) {
     [...recipients].map(([email, name]) =>
       resend.emails.send({
         from: FROM,
+        ...(REPLY_TO ? { replyTo: REPLY_TO } : {}),
         to: email,
         subject,
         html: `
