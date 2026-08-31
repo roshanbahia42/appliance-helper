@@ -58,9 +58,9 @@ and TXT records. Put both at the same subdomain and one will break.
 | Purpose | Subdomain | Records |
 |---|---|---|
 | The app students visit | `maintenance.example.co.uk` | one CNAME, from Vercel |
-| Sending email | `mail.example.co.uk` | MX + TXT (or CNAMEs), from Resend |
+| Sending email | `send.example.co.uk` | MX + TXT (or CNAMEs), from Resend |
 
-Sender then reads `maintenance@mail.example.co.uk`. Slightly redundant, but only
+Sender then reads `maintenance@send.example.co.uk`. Slightly redundant, but only
 the domain registers with anyone reading it.
 
 ### 1. Get the records
@@ -73,7 +73,7 @@ records. Note the Type column rather than the labels: Resend files the MX record
 under "SPF", so "one DKIM and two SPF" is the expected three.
 
 Optionally add DMARC yourself, scoped to the sending subdomain so it cannot
-affect her existing mail: TXT at `_dmarc.mail`, value
+affect her existing mail: TXT at `_dmarc.send`, value
 `v=DMARC1; p=none; rua=mailto:her@example.co.uk`.
 
 ### 2. Send them to the web person
@@ -86,7 +86,7 @@ key fails silently. Include:
 - **Cloudflare users:** set these to "DNS only" (grey cloud), not proxied.
   Proxying breaks both mail authentication and the Vercel CNAME.
 - **Enter names exactly as shown.** Some panels append the domain themselves,
-  which turns `mail.example.co.uk` into `mail.example.co.uk.example.co.uk`.
+  which turns `send.example.co.uk` into `send.example.co.uk.example.co.uk`.
 
 Copy her in. An unknown person asking for DNS changes should make a good web
 developer suspicious.
@@ -95,7 +95,7 @@ developer suspicious.
 
 Once both verify:
 
-- Set `RESEND_FROM` to `Eastwinds Maintenance <maintenance@mail.example.co.uk>`
+- Set `RESEND_FROM` to `Eastwinds Maintenance <maintenance@send.example.co.uk>`
 - Set `NEXT_PUBLIC_APP_URL` to the new app address. This builds the "View your
   request" link in every confirmation email, so missing it leaves students with
   dead vercel.app links
