@@ -21,10 +21,9 @@ import AttachmentLightbox from "./AttachmentLightbox";
 import TicketDetail from "./TicketDetail";
 import MessageTenants from "./MessageTenants";
 
-// Every confirmation currently fails, because RESEND_FROM still points at the
-// sandbox sender that only delivers to verified addresses. The warning would
-// therefore appear on every ticket and mean nothing. Flip to true once a
-// verified sending domain is live — see "Setting up real email" in the README.
+// Flags a tenant whose confirmation email bounced, so the landlady can spot a
+// mistyped address. On while the sandbox sender was in use it fired on every
+// ticket and meant nothing; with a verified domain a failure is genuine.
 const SHOW_DELIVERY_WARNINGS = true;
 
 export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
