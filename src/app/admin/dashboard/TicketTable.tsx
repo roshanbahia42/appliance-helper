@@ -36,6 +36,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [bulkLoading, setBulkLoading] = useState<string | null>(null);
   const [confirmBulk, setConfirmBulk] = useState<BulkAction | null>(null);
   const [sendConflict, setSendConflict] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDate, setFilterDate] = useState("all");
@@ -141,6 +142,31 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     });
   };
 
+  /**
+   * Every admin route is behind an auth check, so an expired session answers
+   * 401. Without this the buttons swallowed it and looked like they did
+   * nothing at all, which is worse than an error.
+   */
+  const postAction = async (url: string, init?: RequestInit) => {
+    setActionError(null);
+    try {
+      const res = await fetch(url, { method: "POST", ...init });
+      if (res.status === 401) {
+        setActionError("Your session has expired. Please log in again.");
+        return false;
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setActionError(body.error ?? `That didn't work (${res.status})`);
+        return false;
+      }
+      return true;
+    } catch {
+      setActionError("Could not reach the server. Check your connection.");
+      return false;
+    }
+  };
+
   const sortIndicator = (field: string) => {
     const [currentField, direction] = sort.split("-");
     if (currentField !== field) return "";
@@ -149,16 +175,18 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
 
   const binTicket = async (reference: string, action: "delete" | "purge" | "restore") => {
     setActionLoading(action);
-    await fetch(`/api/tickets/${reference}/${action}`, { method: "POST" });
+    const ok = await postAction(`/api/tickets/${reference}/${action}`);
     setActionLoading(null);
+    if (!ok) return;
     setSelected(null);
     router.refresh();
   };
 
   const updateStatus = async (reference: string, action: "resolved" | "escalate" | "reopen") => {
     setActionLoading(action);
-    await fetch(`/api/tickets/${reference}/${action}`, { method: "POST" });
+    const ok = await postAction(`/api/tickets/${reference}/${action}`);
     setActionLoading(null);
+    if (!ok) return;
     setSelected(null);
     router.refresh();
   };
@@ -269,13 +297,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
 
   const saveNote = async (reference: string, notes: string) => {
     setActionLoading("note");
-    await fetch(`/api/tickets/${reference}/notes`, {
-      method: "POST",
+    const ok = await postAction(`/api/tickets/${reference}/notes`, {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notes }),
     });
     setActionLoading(null);
-    router.refresh();
+    if (ok) router.refresh();
   };
 
   const selectTicket = (ticket: Ticket) => {
@@ -456,6 +483,19 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               onOpenAttachment={setLightboxUrl}
             />
           </div>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="mb-4 flex items-start justify-between gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+          <p className="text-sm text-red-800">{actionError}</p>
+          <button
+            onClick={() => setActionError(null)}
+            aria-label="Dismiss"
+            className="shrink-0 text-red-400 hover:text-red-700"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
