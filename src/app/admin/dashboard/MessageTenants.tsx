@@ -4,24 +4,27 @@ import { useState } from "react";
 import { Mail } from "lucide-react";
 
 /**
- * Compose box for emailing tenants, from the property's own address rather than
- * whatever mail client the device happens to open.
+ * Compose box for emailing every tenant at a property, from the property's own
+ * address rather than whatever mail client the device happens to open.
  *
- * Handles both cases so the sender and template can only behave one way: pass a
- * `tenant` for one person, or leave it out to reach everyone at the property.
- * Recipients for the whole-house case are worked out server-side from tickets,
- * so there is no list to maintain.
+ * With a `reference` the send is tied to that ticket: the email carries the
+ * ticket's details and replies come back onto its thread, shared by the whole
+ * house. Without one it is a plain announcement (the property filter's
+ * button), where replies go to the landlady's inbox.
+ *
+ * Recipients are worked out server-side from tickets, so there is no list to
+ * maintain. Messaging a single tenant lives in the ticket's thread now.
  */
 export default function MessageTenants({
   property,
-  tenant,
+  reference,
   label,
   defaultSubject = "",
   full = false,
 }: {
   property: string;
-  /** Omit to message everyone at the property. */
-  tenant?: { email: string; name: string };
+  /** Ties the send to a ticket, making replies thread onto it. */
+  reference?: string;
   label: string;
   /** Prefills the subject. The ticket's category, where there is one. */
   defaultSubject?: string;
@@ -50,7 +53,8 @@ export default function MessageTenants({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         property_address: property,
-        tenant_email: tenant?.email,
+        reference,
+        scope: reference ? "property" : undefined,
         subject,
         message: body,
       }),
@@ -62,11 +66,15 @@ export default function MessageTenants({
       setResult(data.error ?? "Could not send");
       return;
     }
+    if (data.rateLimited) {
+      setResult(
+        `Sent to ${data.sent} of ${data.sent + data.failed}. The daily email limit was reached; message the rest tomorrow.`
+      );
+      return;
+    }
     setResult(
-      tenant
-        ? "Sent"
-        : `Sent to ${data.sent} ${data.sent === 1 ? "tenant" : "tenants"}` +
-            (data.failed ? `. ${data.failed} failed` : "")
+      `Sent to ${data.sent} ${data.sent === 1 ? "tenant" : "tenants"}` +
+        (data.failed ? `. ${data.failed} failed` : "")
     );
     setSubject(defaultSubject);
     setBody("");
@@ -89,12 +97,8 @@ export default function MessageTenants({
   return (
     <div className="w-full bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-3">
       <div>
-        <p className="text-sm font-medium text-gray-900">
-          {tenant ? `Message ${tenant.name || tenant.email}` : "Message everyone at"}
-        </p>
-        <p className="text-sm text-gray-500 break-all">
-          {tenant ? tenant.email : property}
-        </p>
+        <p className="text-sm font-medium text-gray-900">Message everyone at</p>
+        <p className="text-sm text-gray-500 break-all">{property}</p>
       </div>
 
       <input
@@ -109,8 +113,8 @@ export default function MessageTenants({
         onChange={(e) => setBody(e.target.value)}
         rows={4}
         placeholder={
-          tenant
-            ? "I'll get someone out to look at this on Thursday..."
+          reference
+            ? "Does anyone know who was using the shower when the leak started?"
             : "The handyman is coming on Thursday morning..."
         }
         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -134,12 +138,11 @@ export default function MessageTenants({
         </button>
       </div>
 
-      {!tenant && (
-        <p className="text-xs text-gray-400">
-          Goes to everyone who has reported from this property in the last year.
-          Each tenant gets their own copy.
-        </p>
-      )}
+      <p className="text-xs text-gray-400">
+        Goes to everyone who has reported from this property in the last year.
+        Each tenant gets their own copy.
+        {reference ? " The ticket's details are included and replies land on its conversation." : ""}
+      </p>
     </div>
   );
 }

@@ -97,6 +97,13 @@ export default async function ConfirmationPage({
           </p>
         </div>
 
+        <a
+          href={`/t/${ticket.public_token}`}
+          className="block w-full bg-[#0f2044] text-white text-center rounded-xl px-4 py-3 text-sm font-semibold hover:bg-blue-900 transition-colors"
+        >
+          View updates and messages
+        </a>
+
         <CloseTicketButton reference={reference} initialStatus={ticket.status} />
       </div>
     </div>

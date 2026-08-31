@@ -38,7 +38,9 @@ GOOGLE_PLACES_API_KEY=
 LANDLORD_EMAIL=              # currently Roshan's email — change to landlady's before go-live
 APP_URL=                     # the live site address, used to build email links
 RESEND_FROM=                 # e.g. "Maintenance <maintenance@send.example.com>" — see below
-RESEND_REPLY_TO=             # optional: where tenant replies go
+RESEND_REPLY_TO=             # the landlady's real inbox — unmatched inbound email is forwarded here
+REPLY_DOMAIN=                # the receiving domain for tenant replies — see Conversations
+INBOUND_WEBHOOK_SECRET=      # whsec_... from the Resend webhook, verifies inbound posts
 ```
 
 ## Domain setup
@@ -133,12 +135,18 @@ src/
       places/route.ts                     # GET: Google Places autocomplete proxy (Birmingham only)
       upload-url/route.ts                 # POST: generates signed Supabase upload URL (bypasses RLS)
       job-batch/route.ts                  # POST: creates a handyman job sheet from selected tickets
-      message-tenants/route.ts            # POST: emails one tenant, or a whole property
+      message-tenants/route.ts            # POST: emails a whole property, ticket-scoped or announcement
+      inbound-email/route.ts              # POST: Resend webhook, threads student replies onto tickets
+      find-ticket/route.ts                # POST: emails a student links to their tickets
+      export/route.ts                     # GET: CSV of every ticket and its messages
+      thread/[token]/reply/route.ts       # POST: student reply from the public thread page
       tickets/bulk/route.ts               # POST: bulk bin / restore / purge / resolve / reopen
       tickets/[reference]/
-        resolved/route.ts                 # POST: marks resolved (media kept)
+        resolved/route.ts                 # POST: marks resolved (media kept), notifies the student
         escalate/route.ts                 # POST: marks escalated (status only, no email)
         reopen/route.ts                   # POST: sets status back to open
+        reply/route.ts                    # POST: the landlady's reply on a ticket's thread
+        read/route.ts                     # POST: marks a ticket's inbound messages read
         delete/route.ts                   # POST: moves to bin (soft delete)
         restore/route.ts                  # POST: restores from bin
         purge/route.ts                    # POST: permanent delete — row + media files
@@ -148,6 +156,11 @@ src/
       CloseTicketButton.tsx               # client component — subtle self-resolve link
     job/[token]/
       page.tsx                            # public handyman job sheet — no auth, unguessable token
+    t/[token]/
+      page.tsx                            # public ticket thread for the student, same trust model
+      ThreadReplyBox.tsx                  # client component: the student's reply box
+    find-ticket/
+      page.tsx                            # emails a student their ticket links
     admin/
       layout.tsx                          # admin layout — links to admin PWA manifest
       login/page.tsx                      # landlady login (Supabase Auth)
@@ -156,13 +169,17 @@ src/
         DashboardHeader.tsx               # header with ticket count + logout
         TicketTable.tsx                   # state, filtering, list views, selection bar
         TicketDetail.tsx                  # one ticket: details, actions, notes, attachments
+        Thread.tsx                        # the conversation view + reply composer
         AttachmentLightbox.tsx            # full-screen viewer with download fallback
-        MessageTenants.tsx                # compose box: one tenant or a whole house
+        MessageTenants.tsx                # compose box for messaging a whole house
   lib/
     categories.ts                         # source of truth: all categories, subcategories, tips
                                           # also contains CONTACTS object with landlady/landlord phone numbers
     tickets.ts                            # Ticket type + pure logic: age, bin maths, sort/filter
                                           # config, handyman message formatters
+    messages.ts                           # TicketMessage type + pure logic: matching, parsing, unread
+    stripReply.ts                         # server-only quote stripping for inbound email
+    notify.ts                             # the resolved-notification email, shared by both resolve paths
     categoryIcons.ts                      # category id -> Lucide icon
     media.ts                              # browser-side image compression + HEIC to JPEG
     storage.ts                            # shared helpers for deleting ticket media
@@ -226,8 +243,37 @@ ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sent_to_handyman_at timestamptz;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS admin_notes text;
 
+-- Conversation threads. One row per message, either direction.
+CREATE TABLE IF NOT EXISTS ticket_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticket_id uuid NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+  direction text NOT NULL CHECK (direction IN ('inbound', 'outbound')),
+  sender_name text,
+  sender_email text,
+  body text NOT NULL,
+  attachments jsonb NOT NULL DEFAULT '[]'::jsonb,
+  provider_message_id text UNIQUE,
+  read_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ticket_messages_thread_idx
+  ON ticket_messages (ticket_id, created_at);
+
+-- Unguessable token used in both the reply address and the student thread URL.
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS public_token text
+  DEFAULT replace(gen_random_uuid()::text, '-', '');
+
+UPDATE tickets SET public_token = replace(gen_random_uuid()::text, '-', '')
+  WHERE public_token IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS tickets_public_token_idx
+  ON tickets (public_token);
+
 ALTER TABLE tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_batches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ticket_messages ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON TABLE ticket_messages TO service_role;
 ```
 
 If a `properties` table exists, enable RLS on it too:
@@ -246,7 +292,10 @@ escalate and reopen. Without it, anyone who knew the URL could POST to
 
 `/resolved` is deliberately left open, because the tenant's own close-ticket link
 on the confirmation page calls it. `/submit`, `/places` and `/upload-url` are the
-public student flow.
+public student flow, and `/find-ticket` and `/thread/[token]/reply` are public by
+design: the first never reveals anything, the second is keyed by the unguessable
+token. `/inbound-email` is protected by the Svix signature instead of a session,
+because Resend is the caller.
 
 ### Why RLS with no policies
 
@@ -470,16 +519,18 @@ prompts and button colours live in `BULK_CONFIRM` in `TicketTable.tsx`.
 
 ### Emailing tenants
 
-Two buttons in the ticket detail: **Message <first name>** for something about
-one room, and **Message everyone at this property** for something affecting the
-house. The filter row also carries the whole-house version, for when there is no
-particular ticket in hand.
+Messaging one tenant happens in the ticket's conversation thread (see
+Conversations below). **Message everyone at this property** in the ticket detail
+starts the whole house on that same thread, with the ticket's details included
+in the email. The filter row also carries a whole-house button for
+announcements with no particular ticket in hand; replies to those go to the
+landlady's inbox, not a thread.
 
-Both go through `/api/message-tenants` so the sender address, the template and
-the one-copy-each rule can only behave one way. The tenant's email is shown as
-plain text rather than a `mailto:` link, because handing off to the device's mail
-client sends from whatever personal account it happens to use, which is the
-problem these buttons exist to solve.
+Property sends go through `/api/message-tenants` so the sender address, the
+template and the one-copy-each rule can only behave one way. The tenant's email
+is shown as plain text rather than a `mailto:` link, because handing off to the
+device's mail client sends from whatever personal account it happens to use,
+which is the problem the thread exists to solve.
 
 Whole-house recipients are worked out server-side from live tickets at that
 address within the last year, so there is no tenant list to maintain: the annual
@@ -492,6 +543,76 @@ would disclose every tenant's address to the others.
 
 Tenants who have never reported anything won't be on the whole-house list. Asking
 each new intake to file one test ticket at the start of the year closes that gap.
+
+### Conversations (email threads on tickets)
+
+Every ticket has a message thread. The landlady writes in the ticket's
+conversation box; the student gets it by email and just hits reply; the reply
+lands back on the thread. She gets no email for routine replies: the **Needs
+reply** tab and the blue "new" badges in the dashboard are her signal, which is
+the point: her inbox stays quiet and the written record stays complete.
+
+How a reply finds its ticket, in priority order:
+
+1. **The tagged address.** Outbound mail sets reply-to to
+   `ticket+<public_token>@<REPLY_DOMAIN>`. The token comes back in the To
+   field and is matched against `tickets.public_token`.
+2. **Thread headers.** `In-Reply-To`/`References` matched against stored
+   `provider_message_id`s.
+3. **The reference in the subject.** `MT-YYYY-NNNNN`, which every outbound
+   subject carries.
+
+Anything that matches nothing, or matches a binned ticket, is **forwarded to
+`RESEND_REPLY_TO`**, never dropped. Auto-replies (out-of-office and the like)
+are detected by header and subject and discarded. Retries are safe: messages
+dedupe on the provider's message id.
+
+Replies to a resolved ticket **reopen it**, because "it's not actually fixed" is the
+most likely content. Resolving a ticket emails the student, and that email's
+reply-to is the tagged address, so their "no it isn't" comes straight back and
+reopens it.
+
+Photo attachments on replies are kept, but recompressed server-side with sharp
+(1600px, JPEG 80) before storage. Emailed photos arrive ~10x larger than the
+browser-compressed ones, and this is the main storage control. Known video
+types are stored up to the same 25MB cap as the form; other file types are
+skipped because the bucket is public and an .html or .svg would execute script.
+
+**Setup (Resend side):**
+
+1. Emails → Receiving gives the account a `<id>.resend.app` test domain that
+   works with no DNS. `REPLY_DOMAIN` points there until cutover.
+2. Webhooks → add the endpoint `https://<app domain>/api/inbound-email` with
+   the `email.received` event; the signing secret is `INBOUND_WEBHOOK_SECRET`.
+3. At cutover: MX records for `reply.<domain>` (values from Resend) go to the
+   web person. It cannot be `send.` (send-only, MX already used for bounces)
+   or the app's subdomain (its CNAME must be alone at that name). Then change
+   `REPLY_DOMAIN` and redeploy. Nothing else changes.
+4. For the first weeks, Resend's own "forward to an address" switch is worth
+   turning on as a belt-and-braces net: the landlady gets a copy of every
+   inbound email even if the webhook misbehaves. Deliberately noisy; switch it
+   off once trusted.
+
+Quote stripping (removing the quoted email under a reply) is heuristic: the
+library handles Gmail and Outlook, but expect occasional stray quoted text
+from unusual clients. A failure falls back to keeping the full text, never to
+losing the message.
+
+**The student's side:**
+
+- `/t/<public_token>` is a public thread page, same trust model as the job
+  sheet: the unguessable URL is the key. History, a reply box, the emergency
+  phone numbers always visible, and a note that replying to a resolved ticket
+  reopens it. It is both the chase-up route and the fallback when an emailed
+  reply can't be matched.
+- `/find-ticket` emails a student links to their tickets, for when the
+  confirmation email is long gone. The response never reveals whether an
+  address has tickets.
+- The confirmation page links through to the thread.
+
+**Export:** the Export CSV link in the dashboard filter row downloads every
+ticket with its messages, one row per ticket, one per message under it.
+Cells are escaped against spreadsheet formula injection.
 
 ### The fortnightly round
 
@@ -646,6 +767,12 @@ only way to know whether work happened is to ask.
    rotated before real tenant data exists.
 3. **Replace `LANDLORD_EMAIL`** in Vercel with the landlady's real address.
    Emergency alerts currently go to Roshan.
+4. **Conversations cutover, once everything is tested.** Move `REPLY_DOMAIN`
+   from the Resend test domain to `reply.<domain>` (MX records via the web
+   person), and switch `/api/submit`'s reply-to from `RESEND_REPLY_TO` to the
+   ticket's tagged address, so replies to the confirmation email land on the
+   thread too. Deliberately left pointing at her inbox until then, so no live
+   reply routes into an untested pipeline.
 
 ## Waiting on the landlady
 

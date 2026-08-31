@@ -16,7 +16,8 @@ import {
   type BulkAction,
   type Ticket,
 } from "@/lib/tickets";
-import { Check, FileText, Trash2, X } from "lucide-react";
+import { Check, Download, FileText, Trash2, X } from "lucide-react";
+import { lastMessageAt, unreadCount, type TicketMessage } from "@/lib/messages";
 import AttachmentLightbox from "./AttachmentLightbox";
 import TicketDetail from "./TicketDetail";
 import MessageTenants from "./MessageTenants";
@@ -26,7 +27,13 @@ import MessageTenants from "./MessageTenants";
 // ticket and meant nothing; with a verified domain a failure is genuine.
 const SHOW_DELIVERY_WARNINGS = true;
 
-export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
+export default function TicketTable({
+  tickets,
+  messagesByTicket,
+}: {
+  tickets: Ticket[];
+  messagesByTicket: Record<string, TicketMessage[]>;
+}) {
   const router = useRouter();
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -37,6 +44,9 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const [confirmBulk, setConfirmBulk] = useState<BulkAction | null>(null);
   const [sendConflict, setSendConflict] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Tickets whose messages were marked read this session, so badges clear the
+  // moment a ticket is opened instead of waiting for a refresh.
+  const [locallyRead, setLocallyRead] = useState<Set<string>>(new Set());
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDate, setFilterDate] = useState("all");
@@ -49,6 +59,13 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const uniqueCategories = [...new Set(tickets.map((t) => t.category))].sort();
 
   const inBin = filterStatus === "bin";
+
+  const messagesFor = (t: Ticket) => messagesByTicket[t.id] ?? [];
+  // Badges use this so they clear on open. The Needs reply tab deliberately
+  // uses the raw server count instead: filtering on it too would make a ticket
+  // vanish from the list at the moment the landlady opens it.
+  const unreadFor = (t: Ticket) =>
+    locallyRead.has(t.id) ? 0 : unreadCount(messagesFor(t));
 
   // Everything except status, so the tab counts can reflect the other filters.
   const matchesFilters = (t: Ticket) => {
@@ -100,17 +117,25 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
     open: live.filter((t) => t.status === "open").length,
     escalated: live.filter((t) => t.status === "escalated").length,
     resolved: live.filter((t) => t.status === "resolved").length,
+    unread: live.filter((t) => unreadCount(messagesFor(t)) > 0).length,
   };
 
   const [sortField, sortDirection] = sort.split("-");
-  const sortValue = SORT_VALUES[sortField] ?? SORT_VALUES.created;
+  // Reply recency lives here rather than SORT_VALUES because it needs the
+  // ticket's messages, which tickets.ts knows nothing about.
+  const sortValue =
+    sortField === "reply"
+      ? (t: Ticket) => lastMessageAt(messagesFor(t))
+      : SORT_VALUES[sortField] ?? SORT_VALUES.created;
 
   const filtered = (
     inBin
       ? matching.filter((t) => t.deleted_at)
       : filterStatus === "all"
         ? live
-        : live.filter((t) => t.status === filterStatus)
+        : filterStatus === "unread"
+          ? live.filter((t) => unreadCount(messagesFor(t)) > 0)
+          : live.filter((t) => t.status === filterStatus)
   )
     .slice()
     .sort((a, b) => {
@@ -137,7 +162,10 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   const toggleSort = (field: string) => {
     setSort((prev) => {
       const [prevField, prevDirection] = prev.split("-");
-      if (prevField !== field) return `${field}-${field === "created" ? "desc" : "asc"}`;
+      // Time-based columns start newest-first; the text ones start A to Z.
+      if (prevField !== field) {
+        return `${field}-${field === "created" || field === "reply" ? "desc" : "asc"}`;
+      }
       return `${field}-${prevDirection === "asc" ? "desc" : "asc"}`;
     });
   };
@@ -306,7 +334,13 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
   };
 
   const selectTicket = (ticket: Ticket) => {
-    setSelected(selected?.id === ticket.id ? null : ticket);
+    const opening = selected?.id !== ticket.id;
+    setSelected(opening ? ticket : null);
+    // Opening the ticket is the moment the unread badge has done its job.
+    if (opening && unreadFor(ticket) > 0) {
+      setLocallyRead((prev) => new Set(prev).add(ticket.id));
+      postAction(`/api/tickets/${ticket.reference_number}/read`);
+    }
   };
 
 
@@ -474,6 +508,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
             <TicketDetail
               key={selected.id}
               ticket={selected}
+              messages={messagesFor(selected)}
               actionLoading={actionLoading}
               showDeliveryWarnings={SHOW_DELIVERY_WARNINGS}
               onStatusChange={updateStatus}
@@ -481,6 +516,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               onSaveNote={saveNote}
               onSendToHandyman={whatsappForHandyman}
               onOpenAttachment={setLightboxUrl}
+              onThreadSent={() => router.refresh()}
             />
           </div>
         </div>
@@ -503,7 +539,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
         <div className="flex-1 min-w-0">
           {/* Status tabs */}
           <div className="flex gap-2 mb-3 flex-wrap">
-            {["all", "open", "escalated", "resolved", "bin"].map((f) => (
+            {["all", "open", "escalated", "resolved", "unread", "bin"].map((f) => (
               <button
                 key={f}
                 onClick={() => {
@@ -516,16 +552,18 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   filterStatus === f
                     ? "bg-blue-600 text-white"
-                    : "bg-white border border-gray-300 text-gray-600 hover:border-blue-400"
+                    : f === "unread" && statusCounts.unread > 0
+                      ? "bg-white border border-blue-400 text-blue-700 hover:border-blue-500"
+                      : "bg-white border border-gray-300 text-gray-600 hover:border-blue-400"
                 } ${f === "bin" ? "ml-auto flex items-center" : ""}`}
               >
                 {f === "bin" ? (
                   <Trash2 className="w-4 h-4" aria-hidden="true" />
                 ) : (
                   <>
-                    {f === "all" ? "All" : STATUS_LABELS[f] ?? f}
+                    {f === "all" ? "All" : f === "unread" ? "Needs reply" : STATUS_LABELS[f] ?? f}
                     <span
-                      className={`ml-1.5 text-xs ${filterStatus === f ? "text-white/70" : "text-gray-400"}`}
+                      className={`ml-1.5 text-xs ${filterStatus === f ? "text-white/70" : f === "unread" && statusCounts.unread > 0 ? "text-blue-500" : "text-gray-400"}`}
                     >
                       {statusCounts[f]}
                     </span>
@@ -591,6 +629,15 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 Clear filters
               </button>
             )}
+            {/* Plain link: the browser downloads the response as a file. */}
+            <a
+              href="/api/export"
+              download
+              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 px-2 md:ml-auto"
+            >
+              <Download className="w-4 h-4" aria-hidden="true" />
+              Export CSV
+            </a>
           </div>
 
           {filterProperty !== "all" && (
@@ -642,6 +689,13 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                           title="Has notes"
                         >
                           <FileText className="w-4 h-4" aria-label="Has notes" />
+                        </span>
+                      )}
+                      {/* With no digest email, this badge is the landlady's
+                          only signal a student replied. */}
+                      {unreadFor(ticket) > 0 && (
+                        <span className="inline-flex align-middle ml-1.5 bg-blue-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                          {unreadFor(ticket)} new
                         </span>
                       )}
                     </span>
@@ -710,6 +764,12 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                     Sent{sortIndicator("sent")}
                   </th>
                   <th
+                    onClick={() => toggleSort("reply")}
+                    className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer select-none hover:text-gray-900"
+                  >
+                    Reply{sortIndicator("reply")}
+                  </th>
+                  <th
                     onClick={() => toggleSort("created")}
                     className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer select-none hover:text-gray-900"
                   >
@@ -764,6 +824,19 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                         <span className="text-xs text-gray-300">—</span>
                       )}
                     </td>
+                    <td className="px-4 py-3">
+                      {unreadFor(ticket) > 0 ? (
+                        <span className="bg-blue-600 text-white text-xs font-bold rounded-full px-2 py-0.5 whitespace-nowrap">
+                          {unreadFor(ticket)} new
+                        </span>
+                      ) : messagesFor(ticket).length > 0 ? (
+                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                          {formatAge(new Date(lastMessageAt(messagesFor(ticket))).toISOString())}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
+                    </td>
                     <td
                       className={`px-4 py-3 text-xs ${isStale(ticket) ? "text-red-600 font-semibold" : "text-gray-400"}`}
                       title={new Date(ticket.created_at).toLocaleDateString()}
@@ -774,7 +847,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                    <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
                       {inBin ? "Bin is empty" : "No tickets found"}
                     </td>
                   </tr>
@@ -804,6 +877,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
               <TicketDetail
                 key={selected.id}
                 ticket={selected}
+                messages={messagesFor(selected)}
                 actionLoading={actionLoading}
                 showDeliveryWarnings={SHOW_DELIVERY_WARNINGS}
                 onStatusChange={updateStatus}
@@ -811,6 +885,7 @@ export default function TicketTable({ tickets }: { tickets: Ticket[] }) {
                 onSaveNote={saveNote}
                 onSendToHandyman={whatsappForHandyman}
                 onOpenAttachment={setLightboxUrl}
+                onThreadSent={() => router.refresh()}
               />
             </div>
           </div>

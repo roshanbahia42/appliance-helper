@@ -9,7 +9,9 @@ import {
   isStale,
   type Ticket,
 } from "@/lib/tickets";
+import type { TicketMessage } from "@/lib/messages";
 import MessageTenants from "./MessageTenants";
+import Thread from "./Thread";
 
 /**
  * Everything shown for one ticket. Rendered twice — as a sticky side panel on
@@ -21,6 +23,7 @@ import MessageTenants from "./MessageTenants";
  */
 export default function TicketDetail({
   ticket,
+  messages,
   actionLoading,
   showDeliveryWarnings,
   onStatusChange,
@@ -28,8 +31,10 @@ export default function TicketDetail({
   onSaveNote,
   onSendToHandyman,
   onOpenAttachment,
+  onThreadSent,
 }: {
   ticket: Ticket;
+  messages: TicketMessage[];
   actionLoading: string | null;
   showDeliveryWarnings: boolean;
   onStatusChange: (reference: string, action: "resolved" | "escalate" | "reopen") => void;
@@ -37,6 +42,7 @@ export default function TicketDetail({
   onSaveNote: (reference: string, notes: string) => Promise<void>;
   onSendToHandyman: (ticket: Ticket) => void;
   onOpenAttachment: (url: string) => void;
+  onThreadSent: () => void;
 }) {
   const [noteDraft, setNoteDraft] = useState(ticket.admin_notes ?? "");
   const [noteSaved, setNoteSaved] = useState(false);
@@ -129,6 +135,15 @@ export default function TicketDetail({
         <span className="text-gray-500 block mb-1">Issue:</span>
         <p className="text-gray-900 bg-gray-50 rounded p-2">{ticket.description}</p>
       </div>
+
+      {!inBin && (
+        <Thread
+          ticket={ticket}
+          messages={messages}
+          onOpenAttachment={onOpenAttachment}
+          onSent={onThreadSent}
+        />
+      )}
 
       <div className="mt-2">
         <span className="text-gray-500 block mb-1">Your notes to the handyman:</span>
@@ -260,15 +275,12 @@ export default function TicketDetail({
             >
               Send to handyman
             </button>
+            {/* Messaging one tenant now happens in the thread above. This
+                starts the whole house on the same thread: "who was using the
+                shower" goes to everyone, and every answer lands here. */}
             <MessageTenants
               property={ticket.property_address}
-              tenant={{ email: ticket.tenant_email, name: ticket.tenant_name }}
-              label={`Message ${ticket.tenant_name.split(" ")[0]}`}
-              defaultSubject={ticket.category}
-              full
-            />
-            <MessageTenants
-              property={ticket.property_address}
+              reference={ticket.reference_number}
               label="Message everyone at this property"
               defaultSubject={ticket.category}
               full

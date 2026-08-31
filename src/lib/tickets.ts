@@ -178,8 +178,11 @@ export const BULK_CONFIRM: Record<
 export const SORT_OPTIONS = [
   { label: "Newest first", value: "created-desc" },
   { label: "Oldest first", value: "created-asc" },
-  { label: "Tenant A–Z", value: "tenant-asc" },
-  { label: "Property A–Z", value: "property-asc" },
+  // Resolved in TicketTable rather than SORT_VALUES: it needs the ticket's
+  // messages, which this file deliberately knows nothing about.
+  { label: "Newest reply", value: "reply-desc" },
+  { label: "Tenant A-Z", value: "tenant-asc" },
+  { label: "Property A-Z", value: "property-asc" },
   { label: "Status", value: "status-asc" },
   { label: "Not sent first", value: "sent-asc" },
 ];

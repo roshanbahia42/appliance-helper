@@ -275,16 +275,21 @@ export default function Home() {
   if (step === 1) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <SiteHeader onHome={startAgain}>
+        {/* Wider than the rest of the flow. This step is a picker rather than a
+            form, so it gains from spreading out, where the later steps still
+            want a narrow column to keep line lengths readable. */}
+        <SiteHeader onHome={startAgain} width="max-w-5xl">
             <h1 className="text-2xl font-bold text-white">Report a maintenance issue</h1>
             <p className="text-blue-200 text-sm mt-1">Select the type of issue to get started</p>
         </SiteHeader>
-        <div className="max-w-xl mx-auto p-6">
+        <div className="max-w-5xl mx-auto p-6">
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">
               What is the issue?
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {/* Six across at lg leaves the 17 categories as 6/6/5, so the last
+                row sits nearly full instead of trailing off. */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {CATEGORIES.map((cat) => {
                 const Icon = iconForCategory(cat.id);
                 return (
@@ -306,6 +311,12 @@ export default function Home() {
               })}
             </div>
           </div>
+          <p className="text-center text-sm text-slate-400 mt-4">
+            Already reported something?{" "}
+            <a href="/find-ticket" className="text-slate-500 underline underline-offset-2 hover:text-[#0f2044]">
+              Find your ticket
+            </a>
+          </p>
         </div>
       </div>
     );

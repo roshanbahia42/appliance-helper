@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { requireAdmin } from "@/utils/supabase/requireAdmin";
+import { escapeHtml, replyAddress } from "@/lib/messages";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.RESEND_FROM ?? "onboarding@resend.dev";
 
 // The sending subdomain is send-only and can't receive, so without this a
 // tenant hitting reply gets a bounce. Points at the landlady's real inbox.
+// Ticket-scoped sends use the tagged reply address instead, which is what
+// routes the reply onto the ticket's thread.
 const REPLY_TO = process.env.RESEND_REPLY_TO;
 
 /**
@@ -22,38 +25,70 @@ const REPLY_TO = process.env.RESEND_REPLY_TO;
 const RECIPIENT_WINDOW_DAYS = 365;
 
 /**
- * Emails either one tenant or everyone at a property.
+ * Emails tenants about a ticket, or sends a plain property announcement.
  *
- * Both go through here so the sender, the template and the one-copy-each rule
- * can only behave one way. Pass `tenant_email` for a single recipient; omit it
- * to reach the whole house.
+ * With a `reference` this is ticket-scoped: the email carries the ticket's
+ * details, replies come back to the ticket's tagged address, and the send is
+ * recorded as one outbound message so the whole house shares a single thread.
+ * Pass `scope: "property"` to reach everyone there, or omit it for just the
+ * ticket's tenant.
+ *
+ * Without a `reference` (the property filter's Message tenants button) it is a
+ * plain announcement: no thread, replies go to the landlady's inbox.
  */
 export async function POST(request: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  const { property_address, tenant_email, subject, message } = await request.json();
+  const { reference, scope, property_address, subject, message } =
+    await request.json();
 
-  if (!property_address || !subject?.trim() || !message?.trim()) {
+  if (!subject?.trim() || !message?.trim()) {
     return NextResponse.json(
-      { error: "Property, subject and message are all required" },
+      { error: "Subject and message are both required" },
       { status: 400 }
     );
   }
 
   const supabase = createAdminClient();
-  const recipients = new Map<string, string>();
 
-  if (tenant_email) {
-    // Look the name up rather than trusting the client for it.
+  type TicketRow = {
+    id: string;
+    tenant_name: string;
+    tenant_email: string;
+    property_address: string;
+    category: string;
+    description: string;
+    created_at: string;
+    public_token: string;
+  };
+
+  let ticket: TicketRow | null = null;
+  if (reference) {
     const { data } = await supabase
       .from("tickets")
-      .select("tenant_name")
-      .eq("tenant_email", tenant_email)
+      .select(
+        "id, tenant_name, tenant_email, property_address, category, description, created_at, public_token"
+      )
+      .eq("reference_number", reference)
       .is("deleted_at", null)
-      .limit(1)
       .maybeSingle();
-    recipients.set(tenant_email.toLowerCase(), data?.tenant_name ?? "");
+    if (!data) {
+      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    }
+    ticket = data;
+  } else if (!property_address) {
+    return NextResponse.json(
+      { error: "A ticket or a property is required" },
+      { status: 400 }
+    );
+  }
+
+  const targetProperty = ticket?.property_address ?? property_address;
+  const recipients = new Map<string, string>();
+
+  if (ticket && scope !== "property") {
+    recipients.set(ticket.tenant_email.toLowerCase(), ticket.tenant_name ?? "");
   } else {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - RECIPIENT_WINDOW_DAYS);
@@ -61,7 +96,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from("tickets")
       .select("tenant_email, tenant_name")
-      .eq("property_address", property_address)
+      .eq("property_address", targetProperty)
       .is("deleted_at", null)
       .gte("created_at", cutoff.toISOString());
 
@@ -81,21 +116,45 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // The reference in the subject doubles as the fallback matching route for
+  // replies that arrive without the tagged address.
+  const fullSubject =
+    ticket && !subject.includes(reference)
+      ? `${subject.trim()} (${reference})`
+      : subject.trim();
+
+  const ticketReplyTo = ticket
+    ? replyAddress(ticket.public_token, process.env.REPLY_DOMAIN)
+    : null;
+  const effectiveReplyTo = ticketReplyTo ?? REPLY_TO;
+
+  const contextBlock = ticket
+    ? `
+      <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0; line-height: 1.8; font-size: 14px;">
+        <p style="margin: 0;"><strong>Reference:</strong> ${reference}</p>
+        <p style="margin: 0;"><strong>Issue:</strong> ${escapeHtml(ticket.category)}</p>
+        <p style="margin: 0;"><strong>Reported:</strong> ${new Date(ticket.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
+        ${ticket.description ? `<p style="margin: 8px 0 0;"><strong>Details:</strong> ${escapeHtml(ticket.description)}</p>` : ""}
+      </div>
+    `
+    : "";
+
   // Sent individually rather than as one email with everyone in `to`, which
   // would disclose every tenant's address to the whole house.
   const results = await Promise.allSettled(
     [...recipients].map(([email, name]) =>
       resend.emails.send({
         from: FROM,
-        ...(REPLY_TO ? { replyTo: REPLY_TO } : {}),
+        ...(effectiveReplyTo ? { replyTo: effectiveReplyTo } : {}),
         to: email,
-        subject,
+        subject: fullSubject,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #111;">
             <p>Hi ${escapeHtml(name?.split(" ")[0] || "there")},</p>
             <div style="white-space: pre-wrap; line-height: 1.6; margin: 16px 0;">${escapeHtml(message)}</div>
+            ${contextBlock}
             <p style="color: #6b7280; font-size: 13px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
-              Sent regarding ${escapeHtml(property_address)}.
+              Sent regarding ${escapeHtml(targetProperty)}.${ticket ? " You can reply to this email." : ""}
             </p>
           </div>
         `,
@@ -106,21 +165,41 @@ export async function POST(request: NextRequest) {
   const failed = results.filter(
     (r) => r.status === "rejected" || r.value?.error
   ).length;
+  const sent = recipients.size - failed;
+
+  // The free tier caps sends per day, shared with receiving. A big
+  // property-wide send hitting the cap must say so, not quietly shrink.
+  const rateLimited = results.some(
+    (r) =>
+      r.status === "fulfilled" &&
+      (r.value?.error?.name === "rate_limit_exceeded" ||
+        /rate limit/i.test(r.value?.error?.message ?? ""))
+  );
 
   if (failed > 0) {
     console.error(
-      `Tenant message: ${failed}/${recipients.size} failed for ${property_address}`
+      `Tenant message: ${failed}/${recipients.size} failed for ${targetProperty}` +
+        (rateLimited ? " (rate limited)" : "")
     );
   }
 
-  return NextResponse.json({ sent: recipients.size - failed, failed });
-}
+  // One row for the whole send: a property-wide question is one conversation,
+  // and every reply to it should land in the same place.
+  if (ticket && sent > 0) {
+    const { error: insertError } = await supabase.from("ticket_messages").insert({
+      ticket_id: ticket.id,
+      direction: "outbound",
+      sender_name: "Eastwinds Maintenance",
+      sender_email: FROM,
+      body: message.trim(),
+    });
+    if (insertError) {
+      console.error(
+        `Tenant message for ${reference}: sent but not recorded:`,
+        JSON.stringify(insertError)
+      );
+    }
+  }
 
-/** The message is typed by the landlady, but it still shouldn't build markup. */
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  return NextResponse.json({ sent, failed, rateLimited });
 }

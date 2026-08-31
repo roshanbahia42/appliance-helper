@@ -22,7 +22,7 @@ export type Category = {
   subcategories: Subcategory[];
 };
 
-const CONTACTS = {
+export const CONTACTS = {
   landlady: "07973 834611",
   landlord2: "07790 498859",
 };
@@ -690,7 +690,7 @@ export const CATEGORIES: Category[] = [
         name: "Smoke Alarm Beeping or Faulty",
         description: "Smoke alarm chirping, triggering without reason, or not working at all",
         tips: [
-          "A slow single chirp (every 30–60 seconds) means the battery needs replacing. Use a fresh 9V battery",
+          "A slow single chirp (every 30-60 seconds) means the battery needs replacing. Use a fresh 9V battery",
           "After replacing the battery, press and hold the test button to reset and confirm it is working",
           "Gently vacuum dust from the vents. Dust buildup is a common cause of false alarms",
           "Never remove or disable a smoke detector. It is a legal requirement",

@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { redirect } from "next/navigation";
 import { deleteTicketMedia } from "@/lib/storage";
+import type { TicketMessage } from "@/lib/messages";
 import DashboardHeader from "./DashboardHeader";
 import TicketTable from "./TicketTable";
 
@@ -41,19 +42,25 @@ export default async function Dashboard() {
   const adminClient = createAdminClient();
   await purgeExpiredBin(adminClient);
 
-  const { data: tickets } = await adminClient
-    .from("tickets")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [{ data: tickets }, { data: messages }] = await Promise.all([
+    adminClient.from("tickets").select("*").order("created_at", { ascending: false }),
+    adminClient.from("ticket_messages").select("*").order("created_at", { ascending: true }),
+  ]);
 
   const all = tickets ?? [];
   const activeCount = all.filter((t) => !t.deleted_at).length;
+
+  // Grouped once here so the table and detail panel never re-derive it.
+  const messagesByTicket: Record<string, TicketMessage[]> = {};
+  for (const message of messages ?? []) {
+    (messagesByTicket[message.ticket_id] ??= []).push(message);
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <DashboardHeader ticketCount={activeCount} />
       <div className="p-6">
-        <TicketTable tickets={all} />
+        <TicketTable tickets={all} messagesByTicket={messagesByTicket} />
       </div>
     </div>
   );
