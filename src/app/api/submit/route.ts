@@ -3,7 +3,10 @@ import { Resend } from "resend";
 import { createAdminClient } from "@/utils/supabase/admin";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://appliance-helper-self.vercel.app";
+// Read only in this route, which runs on the server, so it needs no
+// NEXT_PUBLIC_ prefix. It builds the "View your request" link in confirmation
+// emails; leave it unset and those links point at the old Vercel address.
+const APP_URL = process.env.APP_URL ?? "https://appliance-helper-self.vercel.app";
 
 // onboarding@resend.dev only delivers to addresses verified in the Resend
 // account, so students receive nothing until RESEND_FROM points at a verified

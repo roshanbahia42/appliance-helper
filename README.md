@@ -36,7 +36,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 RESEND_API_KEY=
 GOOGLE_PLACES_API_KEY=
 LANDLORD_EMAIL=              # currently Roshan's email — change to landlady's before go-live
-NEXT_PUBLIC_APP_URL=https://appliance-helper-self.vercel.app
+APP_URL=                     # the live site address, used to build email links
 RESEND_FROM=                 # e.g. "Maintenance <maintenance@send.example.com>" — see below
 RESEND_REPLY_TO=             # optional: where tenant replies go
 ```
@@ -96,7 +96,7 @@ developer suspicious.
 Once both verify:
 
 - Set `RESEND_FROM` to `Eastwinds Maintenance <maintenance@send.example.co.uk>`
-- Set `NEXT_PUBLIC_APP_URL` to the new app address. This builds the "View your
+- Set `APP_URL` to the new app address. This builds the "View your
   request" link in every confirmation email, so missing it leaves students with
   dead vercel.app links
 - **Redeploy.** Environment variables do not take effect until you do
