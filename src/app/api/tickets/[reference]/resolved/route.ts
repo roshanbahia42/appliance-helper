@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { sendResolvedEmails } from "@/lib/notify";
+import { RESOLVED_TICKET_FIELDS, sendResolvedEmails } from "@/lib/notify";
 
 // Media is deliberately kept when a ticket is resolved — the landlady needs a
 // written record, and Reopen/Restore would otherwise leave dead image links.
@@ -20,14 +20,14 @@ export async function POST(
     .update({ status: "resolved", updated_at: new Date().toISOString() })
     .eq("reference_number", reference)
     .neq("status", "resolved")
-    .select("reference_number, tenant_name, tenant_email, category, public_token")
+    .select(RESOLVED_TICKET_FIELDS)
     .maybeSingle();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (updated) await sendResolvedEmails([updated]);
+  if (updated) await sendResolvedEmails([updated], supabase);
 
   return NextResponse.json({ success: true });
 }

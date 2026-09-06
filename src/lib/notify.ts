@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { escapeHtml, replyAddress } from "@/lib/messages";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -6,12 +7,17 @@ const FROM = process.env.RESEND_FROM ?? "onboarding@resend.dev";
 const APP_URL = process.env.APP_URL ?? "https://appliance-helper-self.vercel.app";
 
 export type ResolvedTicket = {
+  id: string;
   reference_number: string;
   tenant_name: string;
   tenant_email: string;
   category: string;
   public_token: string;
 };
+
+/** Selected wherever a resolve needs to notify, so the shape stays in step. */
+export const RESOLVED_TICKET_FIELDS =
+  "id, reference_number, tenant_name, tenant_email, category, public_token";
 
 /**
  * Tells students their ticket was resolved. Shared by the single resolve
@@ -24,7 +30,12 @@ export type ResolvedTicket = {
  * Failures are logged, never thrown: the resolve itself already happened,
  * and un-resolving over a missed courtesy email would be worse.
  */
-export async function sendResolvedEmails(tickets: ResolvedTicket[]) {
+export async function sendResolvedEmails(
+  tickets: ResolvedTicket[],
+  /** Records the notice on each thread, so the conversation shows what the
+   *  student was told and when, not just the status field changing. */
+  supabase?: SupabaseClient
+) {
   const results = await Promise.allSettled(
     tickets.map((ticket) => {
       const replyTo =
@@ -49,6 +60,7 @@ export async function sendResolvedEmails(tickets: ResolvedTicket[]) {
     })
   );
 
+  const delivered: ResolvedTicket[] = [];
   results.forEach((result, i) => {
     const reference = tickets[i].reference_number;
     if (result.status === "rejected") {
@@ -58,6 +70,25 @@ export async function sendResolvedEmails(tickets: ResolvedTicket[]) {
         `Resolved email for ${reference} failed:`,
         JSON.stringify(result.value.error)
       );
+    } else {
+      delivered.push(tickets[i]);
     }
   });
+
+  // Only what actually reached the student, so the thread never claims a
+  // notice that bounced.
+  if (supabase && delivered.length > 0) {
+    const { error } = await supabase.from("ticket_messages").insert(
+      delivered.map((ticket) => ({
+        ticket_id: ticket.id,
+        direction: "outbound",
+        sender_name: "Eastwinds Maintenance",
+        sender_email: FROM,
+        body: "Marked as resolved. The tenant was told, and replying to that email reopens the ticket.",
+      }))
+    );
+    if (error) {
+      console.error("Resolved notice not recorded on thread:", JSON.stringify(error));
+    }
+  }
 }
