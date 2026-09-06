@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { Webhook } from "svix";
-import sharp from "sharp";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { MAX_VIDEO_BYTES } from "@/lib/media";
 import {
@@ -34,6 +33,21 @@ const VIDEO_EXTENSIONS: Record<string, string> = {
   "video/quicktime": "mov",
   "video/webm": "webm",
 };
+
+/**
+ * Health check, so a failing webhook can be diagnosed without waiting for a
+ * student to send something. A 200 proves the route's imports loaded; a crash
+ * page means they did not, which is the failure that took this endpoint down
+ * once already. Reports only whether config is present, never any value.
+ */
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    secretConfigured: !!process.env.INBOUND_WEBHOOK_SECRET,
+    replyDomainConfigured: !!process.env.REPLY_DOMAIN,
+    forwardConfigured: !!process.env.RESEND_REPLY_TO,
+  });
+}
 
 /**
  * Receives student replies from Resend and threads them onto tickets.
@@ -237,6 +251,11 @@ async function storeAttachment(
   let extension = videoExt ?? "jpg";
   let contentType = meta.content_type;
   if (isImage) {
+    // Imported here rather than at the top of the file so a problem loading
+    // this native module can only cost an attachment, never the message it
+    // arrived with. Text replies are the overwhelming majority and must not
+    // depend on an image library being loadable.
+    const { default: sharp } = await import("sharp");
     buffer = Buffer.from(
       await sharp(buffer)
         .rotate() // Bakes in EXIF orientation, which resizing would otherwise lose.
