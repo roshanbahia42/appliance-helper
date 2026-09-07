@@ -275,9 +275,7 @@ export default function Home() {
   if (step === 1) {
     return (
       <div className="min-h-screen bg-slate-50">
-        {/* Matches the grid's column below, so the divider and heading sit on
-            the same left edge as the first category box. */}
-        <SiteHeader onHome={startAgain} width="max-w-6xl">
+        <SiteHeader onHome={startAgain}>
             <h1 className="text-2xl font-bold text-white">Report a maintenance issue</h1>
             <p className="text-blue-200 text-sm mt-1">Select the type of issue to get started</p>
         </SiteHeader>

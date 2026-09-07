@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TriangleAlert } from "lucide-react";
-import { senderUnrecognised, type TicketMessage } from "@/lib/messages";
+import type { TicketMessage } from "@/lib/messages";
 import type { Ticket } from "@/lib/tickets";
 
 /**
@@ -69,7 +68,6 @@ export default function Thread({
         <div className="flex flex-col gap-2 mb-2">
           {messages.map((message) => {
             const outbound = message.direction === "outbound";
-            const flagged = senderUnrecognised(message, ticket.tenant_email);
             return (
               <div
                 key={message.id}
@@ -92,12 +90,6 @@ export default function Thread({
                       {message.sender_name.replace("Eastwinds Maintenance ", "")}
                     </p>
                   )
-                )}
-                {flagged && (
-                  <p className="flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 mb-1">
-                    <TriangleAlert className="w-3 h-3 shrink-0" aria-hidden="true" />
-                    Sent from {message.sender_email}, not the address on the ticket
-                  </p>
                 )}
                 {message.body && (
                   <p className="text-sm whitespace-pre-wrap break-words">{message.body}</p>

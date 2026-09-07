@@ -32,19 +32,6 @@ export function lastMessageAt(messages: TicketMessage[]) {
 }
 
 /**
- * True when a reply came from a different address than the ticket was submitted
- * with. Flagged rather than rejected: students routinely submit with a
- * university address and reply from a personal one.
- */
-export function senderUnrecognised(
-  message: TicketMessage,
-  tenantEmail: string
-) {
-  if (message.direction !== "inbound" || !message.sender_email) return false;
-  return message.sender_email.toLowerCase() !== tenantEmail.toLowerCase();
-}
-
-/**
  * The tagged address replies come back to. The token in the local part is how
  * an inbound email finds its ticket without relying on the student's mail
  * client preserving subjects or headers.

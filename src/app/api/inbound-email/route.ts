@@ -247,10 +247,27 @@ async function handleInbound(request: NextRequest, stage: { at: string }) {
 
   stage.at = "insert";
   const sender = parseSender(from);
+
+  // Housemates reply from their own addresses, so the name on the message is
+  // what tells the landlady who answered. The name they gave on their own
+  // ticket is more reliable than the display name their mail client sets,
+  // which is often missing or something like "j.smith22".
+  let senderName = sender.name;
+  if (sender.email) {
+    const { data: known } = await supabase
+      .from("tickets")
+      .select("tenant_name")
+      .ilike("tenant_email", sender.email)
+      .not("tenant_name", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (known?.tenant_name) senderName = known.tenant_name;
+  }
   const { error: insertError } = await supabase.from("ticket_messages").insert({
     ticket_id: ticket.id,
     direction: "inbound",
-    sender_name: sender.name || null,
+    sender_name: senderName || null,
     sender_email: sender.email || null,
     body,
     attachments: attachmentUrls,

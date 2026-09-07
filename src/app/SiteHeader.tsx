@@ -4,24 +4,26 @@ import Brand from "./Brand";
 /**
  * Navy header used across every screen.
  *
- * The lockup and the title sit in one row inside the same column as the page
- * content below, so the divider and the heading line up with the left edge of
- * that content instead of floating at some width of their own. Pages pass the
- * width they actually use.
+ * The lockup and the title sit in one row, vertically centred on each other.
+ *
+ * The row is a fixed width on every page rather than matching each page's own
+ * content column. Tracking the content meant the lockup moved sideways as you
+ * stepped through the flow, because the category grid is far wider than the
+ * forms that follow it. Fixed, the lockup never moves, and on the first step
+ * it still lines up with the left edge of the grid.
  *
  * Below lg they stack, which is the only arrangement that fits a phone.
  *
  * The lockup is always the way back to the start. It's the only persistent one
  * on the inner steps.
  */
+const HEADER_WIDTH = "max-w-6xl";
+
 export default function SiteHeader({
   children,
-  width = "max-w-2xl",
   onHome,
 }: {
   children?: React.ReactNode;
-  /** Match the page's own content column so the header lines up with it. */
-  width?: string;
   /**
    * The student flow keeps its step in state on a single route, so linking to
    * "/" from it navigates nowhere and leaves you on the same screen. Pages that
@@ -29,12 +31,15 @@ export default function SiteHeader({
    */
   onHome?: () => void;
 }) {
-  const markClasses = "self-start shrink-0 hover:opacity-80 transition-opacity";
+  // self-start only while stacked. Left on in the row it would override the
+  // centring and sit the lockup higher than the heading beside it.
+  const markClasses =
+    "self-start lg:self-auto shrink-0 hover:opacity-80 transition-opacity";
 
   return (
     <header className="bg-[#0f2044] px-5 sm:px-8 py-4">
       <div
-        className={`${width} mx-auto flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6`}
+        className={`${HEADER_WIDTH} mx-auto flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6`}
       >
         {onHome ? (
           <button type="button" onClick={onHome} aria-label="Start again" className={markClasses}>
