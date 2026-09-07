@@ -56,7 +56,7 @@ export default async function ThreadPage({
         </p>
       </SiteHeader>
 
-      <div className="max-w-xl mx-auto p-6 flex flex-col gap-4">
+      <div className="max-w-2xl mx-auto p-6 flex flex-col gap-4">
         <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between gap-3 text-sm">
           <span className="text-slate-500">
             Reported {new Date(ticket.created_at).toLocaleDateString("en-GB", {

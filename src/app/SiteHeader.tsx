@@ -17,7 +17,7 @@ import Brand from "./Brand";
  */
 export default function SiteHeader({
   children,
-  width = "max-w-xl",
+  width = "max-w-2xl",
   onHome,
 }: {
   children?: React.ReactNode;
@@ -46,8 +46,11 @@ export default function SiteHeader({
           </Link>
         )}
         {children && (
+          // Fixed height, contents centred. Steps carry different furniture
+          // (a progress bar, an urgent badge, both, or neither), which made
+          // the banner visibly change thickness from one step to the next.
           <div
-            className={`${width} mx-auto w-full lg:border-l lg:border-white/15 lg:pl-7`}
+            className={`${width} mx-auto w-full lg:border-l lg:border-white/15 lg:pl-7 flex flex-col justify-center min-h-[108px]`}
           >
             {children}
           </div>

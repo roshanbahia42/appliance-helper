@@ -254,7 +254,7 @@ export default function Home() {
             <p className="text-blue-200 text-sm mt-0.5">Glad the issue is resolved</p>
             <ProgressBar step={3} />
         </SiteHeader>
-        <div className="max-w-xl mx-auto p-6 flex flex-col gap-4">
+        <div className="max-w-2xl mx-auto p-6 flex flex-col gap-4">
           <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
             <div className="text-4xl mb-3">✅</div>
             <h2 className="font-semibold text-green-900 text-lg">Great, glad it is sorted!</h2>
@@ -284,7 +284,7 @@ export default function Home() {
         {/* Wider than the rest of the flow. This step is a picker rather than a
             form, so it gains from filling the screen, where the later steps
             still want a narrow column to keep line lengths readable. */}
-        <div className="max-w-7xl mx-auto p-6">
+        <div className="max-w-6xl mx-auto p-6">
           <div className="bg-white rounded-xl border border-slate-200 p-5 lg:p-6">
             <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">
               What is the issue?
@@ -298,7 +298,7 @@ export default function Home() {
                   <button
                     key={cat.id}
                     onClick={() => selectCategory(cat)}
-                    className={`flex flex-col items-center justify-center gap-1.5 lg:gap-2.5 p-3 rounded-xl border text-center transition-all h-24 lg:h-32 ${
+                    className={`flex flex-col items-center justify-center gap-1.5 lg:gap-2 p-3 rounded-xl border text-center transition-all h-24 lg:h-28 ${
                       cat.isEmergency
                         ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-400"
                         : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#0f2044] hover:bg-blue-50 hover:text-[#0f2044]"
@@ -334,7 +334,7 @@ export default function Home() {
             <p className="text-white/70 text-sm mt-0.5">Select the specific issue</p>
             <ProgressBar step={2} />
         </SiteHeader>
-        <div className="max-w-xl mx-auto p-6 flex flex-col gap-3">
+        <div className="max-w-2xl mx-auto p-6 flex flex-col gap-3">
           <BackButton onClick={goBack} />
           {category.subcategories.map((sub) => (
             <button
@@ -379,7 +379,7 @@ export default function Home() {
             <ProgressBar step={isUrgent ? 3 : 4} />
         </SiteHeader>
 
-        <div className="max-w-xl mx-auto p-6 flex flex-col gap-4">
+        <div className="max-w-2xl mx-auto p-6 flex flex-col gap-4">
           <BackButton onClick={goBack} />
           <div
             className={`rounded-xl border p-5 ${
@@ -472,7 +472,7 @@ export default function Home() {
             <p className="text-blue-200 text-sm mt-0.5">Search your address to link this report to your property.</p>
             <ProgressBar step={history[history.length - 2] === 2 ? 3 : 4} />
         </SiteHeader>
-        <div className="max-w-xl mx-auto p-6">
+        <div className="max-w-2xl mx-auto p-6">
           <BackButton onClick={goBack} />
           <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">
             <div className="relative">
@@ -551,7 +551,7 @@ export default function Home() {
             <p className="text-blue-200 text-sm mt-0.5">Almost done, just a few more details</p>
             <ProgressBar step={5} />
         </SiteHeader>
-        <div className="max-w-xl mx-auto p-6">
+        <div className="max-w-2xl mx-auto p-6">
           <BackButton onClick={goBack} />
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">

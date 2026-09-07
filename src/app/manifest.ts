@@ -10,6 +10,12 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#0f2044",
     theme_color: "#0f2044",
     icons: [
+      // Listed as plain icons as well as maskable ones, matching the admin
+      // manifest. Declared maskable-only, the arch was skipped on platforms
+      // that do not apply a mask, and the home screen fell back to whatever
+      // icon it could find instead.
+      { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
       {
         src: "/icon-192.png",
         sizes: "192x192",

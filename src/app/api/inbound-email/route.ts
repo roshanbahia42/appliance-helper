@@ -81,28 +81,48 @@ async function handleInbound(request: NextRequest, stage: { at: string }) {
     return NextResponse.json({ error: "Not configured" }, { status: 500 });
   }
 
-  // Verification needs the exact bytes Resend signed, so the body is read raw
-  // and only parsed once the signature checks out.
+  // Verification needs the exact bytes Resend signed, so the body is read raw.
   const payload = await request.text();
-  let event: {
-    type: string;
-    data: { email_id: string; from: string; to: string[]; subject: string; message_id: string };
-  };
+  stage.at = "verify";
   try {
-    event = new Webhook(secret).verify(payload, {
+    new Webhook(secret).verify(payload, {
       "svix-id": request.headers.get("svix-id") ?? "",
       "svix-timestamp": request.headers.get("svix-timestamp") ?? "",
       "svix-signature": request.headers.get("svix-signature") ?? "",
-    }) as unknown as typeof event;
+    });
   } catch {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  if (event.type !== "email.received") {
+  // verify() validates and returns nothing in this version of svix, so the
+  // payload is parsed separately, only once the signature has passed.
+  stage.at = "parse-payload";
+  type InboundEvent = {
+    type: string;
+    data: {
+      email_id: string;
+      from: string;
+      to?: string[];
+      /** Which of our addresses actually received it. Set even when the
+       *  tagged address was bcc'd, so it is the more reliable of the two. */
+      received_for?: string[];
+      cc?: string[];
+      subject: string;
+      message_id: string;
+    };
+  };
+  let event: InboundEvent;
+  try {
+    event = JSON.parse(payload) as InboundEvent;
+  } catch {
+    return NextResponse.json({ error: "Malformed payload" }, { status: 400 });
+  }
+
+  if (event?.type !== "email.received" || !event.data?.email_id) {
     return NextResponse.json({ ignored: true });
   }
 
-  const { email_id, from, to, subject, message_id } = event.data;
+  const { email_id, from, to, received_for, cc, subject, message_id } = event.data;
   const supabase = createAdminClient();
 
   // Retries and duplicate webhook deliveries both land here.
@@ -136,7 +156,14 @@ async function handleInbound(request: NextRequest, stage: { at: string }) {
   let ticket = null;
   const ticketFields = "id, reference_number, status, tenant_email, deleted_at";
 
-  const token = extractToken(to ?? []);
+  // received_for first: it names the address of ours that the message was
+  // delivered to, which survives the tagged address being bcc'd or the
+  // student adding other recipients.
+  const token = extractToken([
+    ...(received_for ?? []),
+    ...(to ?? []),
+    ...(cc ?? []),
+  ]);
   if (token) {
     const { data } = await supabase
       .from("tickets")
