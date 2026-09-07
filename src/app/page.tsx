@@ -275,28 +275,30 @@ export default function Home() {
   if (step === 1) {
     return (
       <div className="min-h-screen bg-slate-50">
-        {/* Wider than the rest of the flow. This step is a picker rather than a
-            form, so it gains from spreading out, where the later steps still
-            want a narrow column to keep line lengths readable. */}
-        <SiteHeader onHome={startAgain} width="max-w-5xl">
+        {/* Header keeps the default column so the lockup and title cannot
+            collide. Only the grid below widens. */}
+        <SiteHeader onHome={startAgain}>
             <h1 className="text-2xl font-bold text-white">Report a maintenance issue</h1>
             <p className="text-blue-200 text-sm mt-1">Select the type of issue to get started</p>
         </SiteHeader>
-        <div className="max-w-5xl mx-auto p-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
+        {/* Wider than the rest of the flow. This step is a picker rather than a
+            form, so it gains from filling the screen, where the later steps
+            still want a narrow column to keep line lengths readable. */}
+        <div className="max-w-7xl mx-auto p-6">
+          <div className="bg-white rounded-xl border border-slate-200 p-5 lg:p-6">
             <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">
               What is the issue?
             </h2>
             {/* Six across at lg leaves the 17 categories as 6/6/5, so the last
                 row sits nearly full instead of trailing off. */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 lg:gap-4">
               {CATEGORIES.map((cat) => {
                 const Icon = iconForCategory(cat.id);
                 return (
                   <button
                     key={cat.id}
                     onClick={() => selectCategory(cat)}
-                    className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border text-center transition-all h-24 ${
+                    className={`flex flex-col items-center justify-center gap-1.5 lg:gap-2.5 p-3 rounded-xl border text-center transition-all h-24 lg:h-32 ${
                       cat.isEmergency
                         ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-400"
                         : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#0f2044] hover:bg-blue-50 hover:text-[#0f2044]"
@@ -304,8 +306,8 @@ export default function Home() {
                   >
                     {/* Decorative — the label already names the category, so a
                         screen reader shouldn't read it twice. */}
-                    <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} aria-hidden="true" />
-                    <span className="text-xs font-semibold leading-tight">{cat.name}</span>
+                    <Icon className="w-5 h-5 lg:w-7 lg:h-7 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                    <span className="text-xs lg:text-sm font-semibold leading-tight">{cat.name}</span>
                   </button>
                 );
               })}

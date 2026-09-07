@@ -58,6 +58,23 @@ export async function GET() {
  * and the dedupe on provider_message_id makes those retries safe.
  */
 export async function POST(request: NextRequest) {
+  // Whatever goes wrong, Resend must see a JSON body naming the stage that
+  // failed. An unhandled throw returns an HTML error page instead, which is
+  // what made the first outage so slow to diagnose: the delivery log showed
+  // a bare 500 and nothing else.
+  const stage = { at: "start" };
+  try {
+    return await handleInbound(request, stage);
+  } catch (err) {
+    console.error(`Inbound email crashed at ${stage.at}:`, err);
+    return NextResponse.json(
+      { error: "Unhandled", stage: stage.at, detail: String(err).slice(0, 300) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleInbound(request: NextRequest, stage: { at: string }) {
   const secret = process.env.INBOUND_WEBHOOK_SECRET;
   if (!secret) {
     console.error("INBOUND_WEBHOOK_SECRET is not set; rejecting inbound email");
@@ -89,6 +106,7 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
 
   // Retries and duplicate webhook deliveries both land here.
+  stage.at = "dedupe";
   const { data: existing } = await supabase
     .from("ticket_messages")
     .select("id")
@@ -97,10 +115,15 @@ export async function POST(request: NextRequest) {
   if (existing) return NextResponse.json({ duplicate: true });
 
   // The webhook payload is metadata only; body and headers come separately.
+  // Reading it needs an API key with full access, not a sending-only one.
+  stage.at = "fetch-email";
   const { data: email, error: fetchError } = await resend.emails.receiving.get(email_id);
   if (fetchError || !email) {
     console.error(`Inbound ${message_id}: fetch failed:`, JSON.stringify(fetchError));
-    return NextResponse.json({ error: "Fetch failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Fetch failed", detail: fetchError?.message ?? "no body returned" },
+      { status: 500 }
+    );
   }
 
   if (isAutoReply(subject, email.headers)) {
@@ -109,6 +132,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Matching chain: address token, then reply headers, then subject reference.
+  stage.at = "match-ticket";
   let ticket = null;
   const ticketFields = "id, reference_number, status, tenant_email, deleted_at";
 
@@ -161,6 +185,7 @@ export async function POST(request: NextRequest) {
       console.error(`Inbound ${message_id}: unmatched and RESEND_REPLY_TO unset`);
       return NextResponse.json({ error: "Cannot forward" }, { status: 500 });
     }
+    stage.at = "forward";
     const { error: forwardError } = await resend.emails.receiving.forward({
       emailId: email_id,
       to: FORWARD_TO,
@@ -176,11 +201,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ forwarded: true });
   }
 
+  stage.at = "parse-body";
   const rawBody = email.text ?? (email.html ? htmlToText(email.html) : "");
   const body = stripQuotedText(rawBody);
 
   // One bad attachment shouldn't lose the message, so each is processed
   // independently and failures are logged rather than thrown.
+  stage.at = "attachments";
   const attachmentUrls: string[] = [];
   for (const attachment of email.attachments ?? []) {
     try {
@@ -191,6 +218,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  stage.at = "insert";
   const sender = parseSender(from);
   const { error: insertError } = await supabase.from("ticket_messages").insert({
     ticket_id: ticket.id,
