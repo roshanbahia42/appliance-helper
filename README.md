@@ -768,11 +768,10 @@ only way to know whether work happened is to ask.
 3. **Replace `LANDLORD_EMAIL`** in Vercel with the landlady's real address.
    Emergency alerts currently go to Roshan.
 4. **Conversations cutover, once everything is tested.** Move `REPLY_DOMAIN`
-   from the Resend test domain to `reply.<domain>` (MX records via the web
-   person), and switch `/api/submit`'s reply-to from `RESEND_REPLY_TO` to the
-   ticket's tagged address, so replies to the confirmation email land on the
-   thread too. Deliberately left pointing at her inbox until then, so no live
-   reply routes into an untested pipeline.
+   from the Resend test domain to `reply.<domain>` and redeploy. The MX
+   records come from Resend and go to the web person. Nothing else changes:
+   every outbound email already builds its reply-to from that variable, and
+   falls back to `RESEND_REPLY_TO` if it is unset.
 
 ## Waiting on the landlady
 

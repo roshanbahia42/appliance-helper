@@ -79,10 +79,19 @@ export default function Thread({
                     : "self-start bg-gray-100 text-gray-900"
                 }`}
               >
-                {!outbound && (
+                {!outbound ? (
                   <p className="text-xs font-medium text-gray-500 mb-0.5">
                     {message.sender_name || message.sender_email || "Tenant"}
                   </p>
+                ) : (
+                  // Only when it says more than the default, which is how a
+                  // house-wide send is told apart from a direct reply.
+                  message.sender_name &&
+                  message.sender_name !== "Eastwinds Maintenance" && (
+                    <p className="text-xs font-medium text-blue-200 mb-0.5">
+                      {message.sender_name.replace("Eastwinds Maintenance ", "")}
+                    </p>
+                  )
                 )}
                 {flagged && (
                   <p className="flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 mb-1">

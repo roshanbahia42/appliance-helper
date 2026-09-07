@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
 
 /**
@@ -31,6 +32,7 @@ export default function MessageTenants({
   /** Full width suits the detail panel; inline suits the filter row. */
   full?: boolean;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState(defaultSubject);
   const [body, setBody] = useState("");
@@ -78,6 +80,10 @@ export default function MessageTenants({
     );
     setSubject(defaultSubject);
     setBody("");
+    // A ticket-scoped send writes a message onto the thread. Without this the
+    // dashboard keeps its server-rendered copy and the send looks like it was
+    // never recorded.
+    if (reference) router.refresh();
   };
 
   if (!open) {

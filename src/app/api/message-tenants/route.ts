@@ -186,10 +186,16 @@ export async function POST(request: NextRequest) {
   // One row for the whole send: a property-wide question is one conversation,
   // and every reply to it should land in the same place.
   if (ticket && sent > 0) {
+    // The recipient count is carried in the name so the thread can show that
+    // a question went to the whole house rather than to one tenant. Without
+    // it a house-wide send is indistinguishable from a direct reply.
+    const houseWide = scope === "property" && sent > 1;
     const { error: insertError } = await supabase.from("ticket_messages").insert({
       ticket_id: ticket.id,
       direction: "outbound",
-      sender_name: "Eastwinds Maintenance",
+      sender_name: houseWide
+        ? `Eastwinds Maintenance (sent to all ${sent} tenants)`
+        : "Eastwinds Maintenance",
       sender_email: FROM,
       body: message.trim(),
     });
