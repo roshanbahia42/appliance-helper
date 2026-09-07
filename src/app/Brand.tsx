@@ -15,12 +15,26 @@ export default function Brand({
 }: {
   /** "light" for the navy header, "dark" for white backgrounds. */
   tone?: "light" | "dark";
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 }) {
+  // xl scales with the viewport: full size beside a header title on desktop,
+  // stepped down on a phone where it shares the row with nothing.
   const markSize =
-    size === "sm" ? "h-7 w-7" : size === "lg" ? "h-11 w-11" : "h-9 w-9";
+    size === "sm"
+      ? "h-7 w-7"
+      : size === "xl"
+        ? "h-12 w-12 lg:h-14 lg:w-14"
+        : size === "lg"
+          ? "h-11 w-11"
+          : "h-9 w-9";
   const nameSize =
-    size === "sm" ? "text-base" : size === "lg" ? "text-2xl" : "text-xl";
+    size === "sm"
+      ? "text-base"
+      : size === "xl"
+        ? "text-2xl lg:text-3xl"
+        : size === "lg"
+          ? "text-2xl"
+          : "text-xl";
 
   return (
     <span className="inline-flex items-center gap-2.5">

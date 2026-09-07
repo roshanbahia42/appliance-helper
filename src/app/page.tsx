@@ -35,7 +35,7 @@ const EMPTY_FORM: FormState = {
 
 function ProgressBar({ step }: { step: Step }) {
   return (
-    <div className="flex gap-1.5 mt-4">
+    <div className="flex gap-1.5 mt-3">
       {([1, 2, 3, 4, 5] as Step[]).map((s) => (
         <div
           key={s}
@@ -62,7 +62,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
 
 function UrgentBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 bg-red-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full mb-3">
+    <span className="inline-flex items-center gap-1 bg-red-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full mb-2 self-start">
       <TriangleAlert className="w-3 h-3" aria-hidden="true" />
       {label}
     </span>
@@ -275,9 +275,9 @@ export default function Home() {
   if (step === 1) {
     return (
       <div className="min-h-screen bg-slate-50">
-        {/* Header keeps the default column so the lockup and title cannot
-            collide. Only the grid below widens. */}
-        <SiteHeader onHome={startAgain}>
+        {/* Matches the grid's column below, so the divider and heading sit on
+            the same left edge as the first category box. */}
+        <SiteHeader onHome={startAgain} width="max-w-6xl">
             <h1 className="text-2xl font-bold text-white">Report a maintenance issue</h1>
             <p className="text-blue-200 text-sm mt-1">Select the type of issue to get started</p>
         </SiteHeader>

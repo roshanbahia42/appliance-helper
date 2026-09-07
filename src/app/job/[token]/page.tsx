@@ -46,12 +46,15 @@ export default async function JobSheetPage({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-[#0f2044] px-5 sm:px-8 py-5">
-        <div className="relative flex flex-col gap-4 lg:block lg:gap-0">
-          <div className="self-start shrink-0 lg:absolute lg:left-0 lg:top-1/2 lg:-translate-y-1/2">
-            <Brand size="lg" />
+      {/* Mirrors SiteHeader's layout. Not that component, because the lockup
+          there links back to the student form, which is not a place the
+          handyman has any reason to end up. */}
+      <header className="bg-[#0f2044] px-5 sm:px-8 py-4">
+        <div className="max-w-2xl mx-auto flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
+          <div className="self-start shrink-0">
+            <Brand size="xl" />
           </div>
-          <div className="max-w-2xl mx-auto w-full lg:border-l lg:border-white/15 lg:pl-7">
+          <div className="flex flex-col justify-center lg:flex-1 lg:min-w-0 lg:min-h-[92px] lg:border-l lg:border-white/15 lg:pl-6">
             <h1 className="text-xl font-bold text-white">Maintenance Jobs</h1>
             <p className="text-blue-200 text-sm mt-0.5">
               {jobs.length} {jobs.length === 1 ? "job" : "jobs"} across{" "}
