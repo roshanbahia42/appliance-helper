@@ -35,16 +35,25 @@ export function lastMessageAt(messages: TicketMessage[]) {
  * The tagged address replies come back to. The token in the local part is how
  * an inbound email finds its ticket without relying on the student's mail
  * client preserving subjects or headers.
+ *
+ * Led with a word because a bare string of hex reads like spam to the student
+ * being asked to reply to it. Separated with a hyphen rather than a plus: the
+ * address is delivered by a catch-all, so plus-addressing buys nothing, and
+ * some older mail clients handle a plus in a recipient poorly.
  */
 export function replyAddress(token: string, domain: string | undefined) {
   if (!domain) return null;
-  return `ticket+${token}@${domain}`;
+  return `ticket-${token}@${domain}`;
 }
 
-/** Pulls the public token out of a recipient list, or null if none carries one. */
+/**
+ * Pulls the public token out of a recipient list, or null if none carries one.
+ * Accepts the older plus form too, so a reply to an email sent before the
+ * change still finds its ticket.
+ */
 export function extractToken(recipients: string[]) {
   for (const recipient of recipients) {
-    const match = /ticket\+([a-z0-9]+)@/i.exec(recipient);
+    const match = /ticket[-+]([a-z0-9]+)@/i.exec(recipient);
     if (match) return match[1].toLowerCase();
   }
   return null;

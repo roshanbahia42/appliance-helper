@@ -261,10 +261,15 @@ CREATE INDEX IF NOT EXISTS ticket_messages_thread_idx
   ON ticket_messages (ticket_id, created_at);
 
 -- Unguessable token used in both the reply address and the student thread URL.
+-- 12 hex characters, around 48 bits: short enough that the reply address and
+-- thread link stay readable, far more than enough that nobody guesses one.
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS public_token text
-  DEFAULT replace(gen_random_uuid()::text, '-', '');
+  DEFAULT substr(replace(gen_random_uuid()::text, '-', ''), 1, 12);
 
-UPDATE tickets SET public_token = replace(gen_random_uuid()::text, '-', '')
+ALTER TABLE tickets ALTER COLUMN public_token
+  SET DEFAULT substr(replace(gen_random_uuid()::text, '-', ''), 1, 12);
+
+UPDATE tickets SET public_token = substr(replace(gen_random_uuid()::text, '-', ''), 1, 12)
   WHERE public_token IS NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS tickets_public_token_idx
@@ -555,8 +560,10 @@ the point: her inbox stays quiet and the written record stays complete.
 How a reply finds its ticket, in priority order:
 
 1. **The tagged address.** Outbound mail sets reply-to to
-   `ticket+<public_token>@<REPLY_DOMAIN>`. The token comes back in the To
-   field and is matched against `tickets.public_token`.
+   `ticket-<public_token>@<REPLY_DOMAIN>`. The token comes back in the To
+   field, or in `received_for`, and is matched against `tickets.public_token`.
+   The older `ticket+` form is still accepted, so replies to email sent
+   before the change keep working.
 2. **Thread headers.** `In-Reply-To`/`References` matched against stored
    `provider_message_id`s.
 3. **The reference in the subject.** `MT-YYYY-NNNNN`, which every outbound
