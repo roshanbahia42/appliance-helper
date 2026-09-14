@@ -591,10 +591,17 @@ skipped because the bucket is public and an .html or .svg would execute script.
    works with no DNS. `REPLY_DOMAIN` points there until cutover.
 2. Webhooks → add the endpoint `https://<app domain>/api/inbound-email` with
    the `email.received` event; the signing secret is `INBOUND_WEBHOOK_SECRET`.
-3. At cutover: MX records for `reply.<domain>` (values from Resend) go to the
-   web person. It cannot be `send.` (send-only, MX already used for bounces)
-   or the app's subdomain (its CNAME must be alone at that name). Then change
-   `REPLY_DOMAIN` and redeploy. Nothing else changes.
+3. At cutover: enable receiving on the existing `send.<domain>`, which is
+   already verified for sending, and send the one MX record it produces to
+   the web person. It must be the lowest priority MX on that name. Then set
+   `REPLY_DOMAIN` to `send.<domain>` and redeploy. Nothing else changes.
+
+   Receiving on the sending domain rather than a separate `reply.` subdomain
+   keeps it to a single MX record with no verification records, and means
+   the reply-to matches the From domain. `send.<domain>` has no MX of its
+   own: Resend's bounce handling lives at `send.send.<domain>`, a different
+   name, so the two do not collide. The app's own subdomain is the one place
+   this cannot go, because its CNAME must be alone at that name.
 4. For the first weeks, Resend's own "forward to an address" switch is worth
    turning on as a belt-and-braces net: the landlady gets a copy of every
    inbound email even if the webhook misbehaves. Deliberately noisy; switch it
@@ -775,10 +782,11 @@ only way to know whether work happened is to ask.
 3. **Replace `LANDLORD_EMAIL`** in Vercel with the landlady's real address.
    Emergency alerts currently go to Roshan.
 4. **Conversations cutover, once everything is tested.** Move `REPLY_DOMAIN`
-   from the Resend test domain to `reply.<domain>` and redeploy. The MX
-   records come from Resend and go to the web person. Nothing else changes:
-   every outbound email already builds its reply-to from that variable, and
-   falls back to `RESEND_REPLY_TO` if it is unset.
+   from the Resend test domain to `send.<domain>` and redeploy, once its MX
+   record is live. Nothing else changes: every outbound email already builds
+   its reply-to from that variable, and falls back to `RESEND_REPLY_TO` if it
+   is unset. The test domain keeps receiving throughout, so replies to mail
+   already sent are never stranded.
 
 ## Waiting on the landlady
 
