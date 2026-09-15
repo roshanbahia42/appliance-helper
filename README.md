@@ -65,6 +65,49 @@ and TXT records. Put both at the same subdomain and one will break.
 Sender then reads `maintenance@send.example.co.uk`. Slightly redundant, but only
 the domain registers with anyone reading it.
 
+### `send.` is its own DNS zone. Records go in it, not the main zone
+
+Read this before asking anyone to change DNS under `send.`, because getting it
+wrong looks exactly like the record never being added.
+
+During setup the host created `send.eastwindspropertygroup.co.uk` through the
+control panel's Subdomains feature, which made it a **separately delegated
+zone** rather than an ordinary name inside the main zone. The main zone now
+holds nothing for it but a signpost:
+
+```
+send.eastwindspropertygroup.co.uk   NS   ns1.send.eastwindspropertygroup.co.uk
+                                    NS   ns2.send.eastwindspropertygroup.co.uk
+```
+
+Two consequences, both of which cost a week the first time:
+
+1. **Anything added for a `send.` name in the main zone is ignored.** Resolvers
+   follow the delegation and only read the `send.` zone. The record resolves as
+   absent, with no error anywhere to explain why.
+2. **Host fields in that zone are relative to it.** The panel appends
+   `.send.eastwindspropertygroup.co.uk` to whatever is typed. Entering
+   `rsend.send`, which is right for the main zone, produces
+   `rsend.send.send.eastwindspropertygroup.co.uk`.
+
+So when requesting a change, **give fully qualified names** and say which zone
+they belong in. `resend._domainkey.send.eastwindspropertygroup.co.uk`, not
+`resend._domainkey.send`.
+
+Check which situation you are in before assuming anything:
+
+```sh
+dig NS send.eastwindspropertygroup.co.uk +short
+# ns1.send... / ns2.send...  -> still delegated, records go in the send. zone
+# (nothing, or the parent's own nameservers) -> ordinary name, main zone
+```
+
+Both nameservers point at the same server as the parent's, so the split buys
+nothing. Collapsing `send.` back into the main zone would remove this trap for
+good: delete the separate zone, then re-add its records (DKIM TXT, the two
+CNAMEs, and the MX) in the main zone. Worth doing during a quiet period, never
+while something is broken.
+
 ### 1. Get the records
 
 **Vercel** → project → Settings → Domains → Add → enter the app subdomain.
