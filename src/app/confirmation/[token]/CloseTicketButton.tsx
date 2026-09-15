@@ -9,10 +9,13 @@ import { useState } from "react";
  * hit by accident, and a tenant who closes a real fault has no way to reopen it.
  */
 export default function CloseTicketButton({
-  reference,
+  token,
   initialStatus,
 }: {
-  reference: string;
+  /** The ticket's unguessable token, not its reference. Keying the close
+   *  action on the reference let anyone resolve a stranger's ticket by
+   *  guessing five digits. */
+  token: string;
   initialStatus: string;
 }) {
   const [state, setState] = useState<"idle" | "confirming" | "loading" | "done">(
@@ -54,7 +57,7 @@ export default function CloseTicketButton({
         <button
           onClick={async () => {
             setState("loading");
-            await fetch(`/api/tickets/${reference}/resolved`, { method: "POST" });
+            await fetch(`/api/thread/${token}/resolve`, { method: "POST" });
             setState("done");
           }}
           disabled={state === "loading"}

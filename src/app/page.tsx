@@ -237,7 +237,7 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || "Something went wrong");
       // Deliberately leaves loading true — the redirect is in flight, and
       // re-enabling the button here invites a double submission.
-      router.push(`/confirmation/${data.reference}`);
+      router.push(`/confirmation/${data.token}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setLoading(false);

@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
             ${isEmergency ? '<p style="margin: 0; color: #dc2626;"><strong>⚠️ Flagged as urgent</strong></p>' : ""}
           </div>
           <div style="margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 20px; text-align: center;">
-            <a href="${APP_URL}/confirmation/${reference}" style="display: inline-block; background: #0f2044; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; margin-bottom: 12px;">View your request →</a>
+            <a href="${APP_URL}/confirmation/${created.public_token}" style="display: inline-block; background: #0f2044; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; margin-bottom: 12px;">View your request →</a>
             <p style="color: #9ca3af; font-size: 12px; margin: 0;">If your issue has since been resolved, you can close this ticket from the link above.</p>
           </div>
         </div>
@@ -180,5 +180,7 @@ export async function POST(request: NextRequest) {
       .eq("reference_number", reference);
   }
 
-  return NextResponse.json({ reference });
+  // The token, not the reference, is what the browser needs to reach the
+  // confirmation page now that the page is keyed on it.
+  return NextResponse.json({ reference, token: created.public_token });
 }

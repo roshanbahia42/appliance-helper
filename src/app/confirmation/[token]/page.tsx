@@ -3,21 +3,35 @@ import { notFound } from "next/navigation";
 import SiteHeader from "@/app/SiteHeader";
 import CloseTicketButton from "./CloseTicketButton";
 
+/**
+ * Keyed on the ticket's unguessable token, never on its reference number.
+ *
+ * The reference is five random digits, so keying this page on it meant anyone
+ * could walk the range and harvest every tenant's email, address, room and
+ * photos. The reference is still shown on the page, because the student needs
+ * to be able to quote it. It just no longer grants access to anything.
+ */
 export default async function ConfirmationPage({
   params,
 }: {
-  params: Promise<{ reference: string }>;
+  params: Promise<{ token: string }>;
 }) {
-  const { reference } = await params;
+  const { token } = await params;
   const supabase = createAdminClient();
 
+  // Narrowed to what this page renders. A public page has no business
+  // selecting columns it does not show, such as the tenant's phone number.
   const { data: ticket } = await supabase
     .from("tickets")
-    .select("*")
-    .eq("reference_number", reference)
-    .single();
+    .select(
+      "reference_number, tenant_email, tenant_room, property_address, category, description, media_urls, status, public_token"
+    )
+    .eq("public_token", token)
+    .maybeSingle();
 
   if (!ticket) notFound();
+
+  const reference = ticket.reference_number;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -104,7 +118,7 @@ export default async function ConfirmationPage({
           View updates and messages
         </a>
 
-        <CloseTicketButton reference={reference} initialStatus={ticket.status} />
+        <CloseTicketButton token={token} initialStatus={ticket.status} />
       </div>
     </div>
   );

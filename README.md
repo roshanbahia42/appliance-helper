@@ -345,6 +345,35 @@ design: the first never reveals anything, the second is keyed by the unguessable
 token. `/inbound-email` is protected by the Svix signature instead of a session,
 because Resend is the caller.
 
+### Reference numbers are names, not keys
+
+`MT-2026-27581` is five random digits: 90,000 possibilities, and generated with
+`Math.random()`. It exists so a student can quote their ticket on the phone, so
+it has to stay short and readable. That makes it unusable as a credential.
+
+**Nothing public may be keyed on a reference number.** Every public page and
+route is keyed on `tickets.public_token` instead, which is 12 hex characters,
+around 48 bits, and never displayed as an identifier.
+
+This was not always true. `/confirmation/[reference]` was public and keyed on
+the reference while selecting `*`, so walking the range would have returned
+every tenant's email, address, room number and photographs. `/resolved` was
+public and keyed on the reference too, so the same walk could have closed every
+ticket and emailed all of them about it. Both are fixed; the shape of the
+mistake is worth remembering.
+
+The split to preserve:
+
+| | Key | Auth |
+|---|---|---|
+| `/confirmation/[token]`, `/t/[token]`, `/job/[token]` | token | none, token is the key |
+| `/api/thread/[token]/reply`, `/api/thread/[token]/resolve` | token | none, token is the key |
+| `/api/tickets/[reference]/*` | reference | `requireAdmin()` |
+
+Reference-keyed routes are for the dashboard and must stay behind a session.
+Tenant-facing equivalents get their own token-keyed route rather than opening
+up an admin one.
+
 ### Why RLS with no policies
 
 The anon key is public — it ships in the browser bundle — so without RLS anyone
