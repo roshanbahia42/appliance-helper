@@ -816,20 +816,36 @@ only way to know whether work happened is to ask.
 
 ## Blocking go-live
 
-1. **Domain setup.** Until it's done **no student receives a confirmation
-   email**, because the fallback sender only delivers to verified addresses.
-   The code is ready; this is DNS plus two environment variables. See "Domain
-   setup" above, which covers the app URL and email sending together.
+Domain setup is **done**: sending, the app URL and the receiving MX are all
+verified. What remains:
+
+1. **Conversations cutover.** Move `REPLY_DOMAIN` from the Resend test domain
+   to `send.<domain>` and redeploy. Nothing else changes: every outbound email
+   already builds its reply-to from that variable, and falls back to
+   `RESEND_REPLY_TO` if it is unset. The test domain keeps receiving
+   throughout, so replies to mail already sent are never stranded.
 2. **Rotate API keys.** All keys were exposed in a dev session and should be
    rotated before real tenant data exists.
 3. **Replace `LANDLORD_EMAIL`** in Vercel with the landlady's real address.
-   Emergency alerts currently go to Roshan.
-4. **Conversations cutover, once everything is tested.** Move `REPLY_DOMAIN`
-   from the Resend test domain to `send.<domain>` and redeploy, once its MX
-   record is live. Nothing else changes: every outbound email already builds
-   its reply-to from that variable, and falls back to `RESEND_REPLY_TO` if it
-   is unset. The test domain keeps receiving throughout, so replies to mail
-   already sent are never stranded.
+   Emergency alerts currently go to Roshan. Until this points at an address on
+   her own domain, the mail filtering below cannot be tested at all.
+4. **Clear the test data.** Delete from `ticket_messages`, `tickets` and
+   `job_batches`, empty the `ticket-media` storage bucket (deleting rows does
+   not remove uploaded files), and set the shorter token default:
+
+   ```sql
+   ALTER TABLE tickets ALTER COLUMN public_token
+     SET DEFAULT substr(replace(gen_random_uuid()::text, '-', ''), 1, 12);
+   ```
+
+5. **Mail filtering at her end.** Her server treats mail from `send.<domain>`
+   as self-spoofing and drops it, so emergency alerts do not arrive. This is
+   not a DNS problem: the mail passes SPF and DKIM. It needs an exception on
+   her mail server, scoped to DKIM-authenticated mail from that subdomain
+   rather than a From-address allowlist, which would reopen the hole the
+   protection exists to close.
+6. **The landlady's admin account.** Confirm she has a Supabase Auth user and
+   can log in, before she needs to.
 
 ## Waiting on the landlady
 
@@ -842,11 +858,12 @@ only way to know whether work happened is to ask.
    remaining job is "can't wait for the fortnightly round". If she wouldn't use
    it, statuses collapse to open/resolved and emergency submissions need another
    way to signal urgency.
-8. **CSV export** — plan agreed (exports the filtered view, handles quoting,
-   Excel formula injection, UTF-8 BOM and ISO dates). Held pending her answer on
-   whether she wants it. Note it preserves the written record only — photo links
-   die with the tickets, so decide before the first changeover, not after.
-9. **Emergency SMS** — email is sent now; does she also want a text?
+8. **Emergency SMS** — email is sent now; does she also want a text?
+
+CSV export was on this list and is now built. It exports every ticket with its
+messages, escaped against spreadsheet formula injection. It preserves the
+written record only: photo links die with the tickets, so an export taken
+before a changeover is not a substitute for the photos themselves.
 
 ## Worth doing, unprompted
 
