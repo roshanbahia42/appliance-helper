@@ -905,6 +905,13 @@ verified. What remains:
    protection exists to close.
 6. **The landlady's admin account.** Confirm she has a Supabase Auth user and
    can log in, before she needs to.
+7. **Test with a university address**, not just Gmail. Most students will use
+   one, and they filter hardest. Check four things: the confirmation lands in
+   the inbox rather than spam, a reply from that address threads onto the
+   ticket, the reply is not swallowed by the auto-reply filter (university
+   systems are the likeliest to attach headers that trip it), and the thread
+   link still works after Microsoft Safe Links rewrites it, which it does to
+   every URL in mail it handles.
 
 ## Waiting on the landlady
 
