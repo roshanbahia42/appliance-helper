@@ -345,6 +345,36 @@ design: the first never reveals anything, the second is keyed by the unguessable
 token. `/inbound-email` is protected by the Svix signature instead of a session,
 because Resend is the caller.
 
+### Rate limits on the unauthenticated routes
+
+`src/lib/rateLimit.ts`, applied per IP over a 10 minute window:
+
+| Route | Limit | Protecting |
+|---|---|---|
+| `/api/submit` | 10 | the Resend daily send cap |
+| `/api/find-ticket` | 5 | the same cap |
+| `/api/upload-url` | 40 | storage quota and the public bucket |
+| `/api/places` | 120 | Google Places billing |
+
+The real target is the **daily email cap**. `/submit` and `/find-ticket` both
+send mail without a session, so a few dozen scripted calls could exhaust the
+day's quota, leaving real students with no confirmation and the landlady with
+no urgent alerts. That failure looks like the system being broken rather than
+like an attack, which is what makes it worth preventing.
+
+Short windows rather than daily caps, and generous numbers, because **students
+share IP addresses**: a house is behind one router and university wifi NATs
+hundreds of people. A script makes hundreds of requests, so even a loose limit
+stops it while never touching someone reporting three faults in one sitting.
+
+State is in-process, so it resets on cold start and is not shared between
+serverless instances. Partial rather than airtight: it stops a script hammering
+from one address, which is the realistic threat, but not a distributed attempt.
+A shared store such as Upstash is the upgrade if that ever matters.
+
+Every caller degrades sensibly on a 429: the form shows the message, uploads
+name the file that failed, and the address lookup falls back to manual entry.
+
 ### Reference numbers are names, not keys
 
 `MT-2026-27581` is five random digits: 90,000 possibilities, and generated with

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rateLimit";
 
 /**
  * Server-side proxy for Google Places Autocomplete, so the API key never
@@ -10,6 +11,11 @@ import { NextRequest, NextResponse } from "next/server";
  * expired key or a suspended billing account very hard to spot.
  */
 export async function GET(request: NextRequest) {
+  // Billed per call by Google. The client debounces keystrokes, so a tenant
+  // typing an address makes a handful of requests, not one per character.
+  const limited = rateLimit(request, "places", 120);
+  if (limited) return limited;
+
   const input = request.nextUrl.searchParams.get("input") ?? "";
   if (input.length < 2) {
     return NextResponse.json({ suggestions: [] });

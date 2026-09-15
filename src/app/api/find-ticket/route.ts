@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { escapeHtml } from "@/lib/messages";
 import { STATUS_LABELS } from "@/lib/tickets";
+import { rateLimit } from "@/lib/rateLimit";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.RESEND_FROM ?? "onboarding@resend.dev";
@@ -22,6 +23,11 @@ const LOOKUP_WINDOW_DAYS = 365;
  * something. The links go to the inbox that owns them, nowhere else.
  */
 export async function POST(request: NextRequest) {
+  // Also sends email, and recovering a lost link is a once-in-a-while action,
+  // so this can be tighter than submissions.
+  const limited = rateLimit(request, "find-ticket", 5);
+  if (limited) return limited;
+
   const { email } = await request.json();
 
   if (typeof email !== "string" || !email.includes("@")) {

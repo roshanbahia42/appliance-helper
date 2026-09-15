@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { replyAddress } from "@/lib/messages";
+import { rateLimit } from "@/lib/rateLimit";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 // Read only in this route, which runs on the server, so it needs no
@@ -39,6 +40,12 @@ function generateReference() {
 }
 
 export async function POST(request: NextRequest) {
+  // Each submission sends one or two emails against a shared daily cap, so
+  // this is the most abusable route in the app. Ten covers a tenant reporting
+  // several faults at once, and a whole house doing so from one router.
+  const limited = rateLimit(request, "submit", 10);
+  if (limited) return limited;
+
   const body = await request.json();
   const {
     tenant_name,

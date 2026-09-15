@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { rateLimit } from "@/lib/rateLimit";
 
 // The bucket is public, so anything uploaded is served straight back by
 // Supabase. Restricting the extension stops someone storing an .html or .svg
@@ -21,6 +22,12 @@ const ALLOWED_EXTENSIONS = new Set([
 ]);
 
 export async function POST(request: NextRequest) {
+  // Storage rather than email: without this, anyone could fill the bucket and
+  // host files on our Supabase domain. Five files per ticket is the form's
+  // own cap, so 40 leaves room for retries and several tickets from a house.
+  const limited = rateLimit(request, "upload", 40);
+  if (limited) return limited;
+
   const { filename } = await request.json();
 
   if (typeof filename !== "string" || !filename) {
