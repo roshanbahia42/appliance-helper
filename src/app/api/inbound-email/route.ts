@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { Webhook } from "svix";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { requireAdmin } from "@/utils/supabase/requireAdmin";
 import { MAX_IMAGE_BYTES, MAX_VIDEO_BYTES } from "@/lib/media";
 import {
   extractReference,
@@ -60,11 +61,32 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
  * once already. Reports only whether config is present, never any value.
  */
 export async function GET() {
-  return NextResponse.json({
+  const config = {
     ok: true,
     secretConfigured: !!process.env.INBOUND_WEBHOOK_SECRET,
     replyDomainConfigured: !!process.env.REPLY_DOMAIN,
     forwardConfigured: !!process.env.RESEND_REPLY_TO,
+  };
+
+  // Everything below is admin only: it spends an API call, and whether our
+  // provider key works is nobody else's business.
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json(config);
+
+  // Answers the question that is otherwise pure guesswork after a key
+  // rotation: does the key this deployment is actually running with work?
+  // The prefix and length are enough to spot a truncated or whitespace
+  // padded paste without ever printing the key.
+  const key = process.env.RESEND_API_KEY ?? "";
+  const { error } = await resend.domains.list();
+
+  return NextResponse.json({
+    ...config,
+    resendKeyPrefix: key.slice(0, 6),
+    resendKeyLength: key.length,
+    resendKeyTrimmedLength: key.trim().length,
+    resendKeyWorks: !error,
+    resendError: error?.message ?? null,
   });
 }
 
