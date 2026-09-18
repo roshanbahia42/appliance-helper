@@ -471,6 +471,20 @@ format (Chrome and Firefox can't read HEIC), the original file uploads unchanged
 so compression failing never blocks a submission — the HEIC download fallbacks in
 the UI remain as a safety net.
 
+**Photos arriving by email are not compressed.** They skip the browser entirely,
+so they land at around 3 MB rather than 300 KB. They were resized server-side
+with sharp, which was removed: sharp resolves its native library through a
+dynamic require that Vercel's file tracing cannot follow, and it failed in
+production twice, once taking the whole inbound webhook down with it.
+
+The saving was roughly 150 MB a year, set against an annual clear-out that
+already keeps the project inside the free tier, and a 100 GB paid tier at about
+$25 a month if it ever does not. Not a good trade for a fragile native
+dependency sitting in the path of every inbound student message.
+
+If storage ever does get tight, the lever is the **video cap**, not photo
+quality: one 25 MB video is worth eighty compressed photos.
+
 Video can't be compressed browser-side, which is why the cap is lower: a single
 25MB clip costs as much storage as ~35 compressed photos.
 

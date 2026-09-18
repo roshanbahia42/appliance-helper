@@ -17,13 +17,7 @@
     "react-dom": "19.2.4",
     "resend": "^6.12.4",
     "server-only": "^0.0.1",
-    "sharp": "^0.35.4",
     "svix": "^2.2.0"
-  },
-  "//": "sharp resolves its native library with a dynamic require, which Vercel's file tracing cannot see, so the Linux binaries have to be named explicitly or the deployed function fails with ERR_DLOPEN_FAILED. Harmless on other platforms: npm skips optional dependencies whose os and cpu do not match.",
-  "optionalDependencies": {
-    "@img/sharp-libvips-linux-x64": "1.3.3",
-    "@img/sharp-linux-x64": "0.35.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

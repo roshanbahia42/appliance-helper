@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { Webhook } from "svix";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { MAX_VIDEO_BYTES } from "@/lib/media";
+import { MAX_IMAGE_BYTES, MAX_VIDEO_BYTES } from "@/lib/media";
 import {
   extractReference,
   extractToken,
@@ -17,14 +17,24 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.RESEND_FROM ?? "onboarding@resend.dev";
 const FORWARD_TO = process.env.RESEND_REPLY_TO;
 
-// Attachment downloads and sharp add up; the platform default can cut a
+// Downloading several attachments adds up; the platform default can cut a
 // multi-photo reply off halfway through.
 export const maxDuration = 60;
 
-// Mirrors the browser-side compression in media.ts. Emailed photos skip that
-// entirely and arrive around 10x larger, so this is the main storage control.
-const MAX_IMAGE_DIMENSION = 1600;
-const JPEG_QUALITY = 80;
+/**
+ * Emailed photos are stored as they arrive, uncompressed.
+ *
+ * They were resized with sharp, which is roughly a 10x saving, but sharp
+ * resolves its native library through a dynamic require that Vercel's file
+ * tracing cannot follow. It failed in production twice, once taking the whole
+ * webhook down, and it sat in the path of every inbound student message.
+ *
+ * The saving was around 150 MB a year, against an annual clear-out that
+ * already keeps the project inside the free tier and a 100 GB paid tier at $25
+ * a month if it ever does not. Not worth a fragile native dependency between a
+ * student and their landlady. Photos submitted through the form are still
+ * compressed in the browser, where no native code is involved.
+ */
 
 // The bucket is public, so file types are restricted for the same reason as
 // upload-url: an .html or .svg would execute script when opened.
@@ -34,7 +44,6 @@ const VIDEO_EXTENSIONS: Record<string, string> = {
   "video/webm": "webm",
 };
 
-/** Only used when compression fails and the original has to be stored as-is. */
 const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -306,8 +315,9 @@ async function handleInbound(request: NextRequest, stage: { at: string }) {
 
 /**
  * Downloads one attachment from Resend and stores it in the public bucket.
- * Images are recompressed with sharp; known video types are stored as-is up to
- * the same cap the student form applies. Everything else is skipped.
+ * Known image and video types are stored as they arrive, up to the same caps
+ * the student form applies; everything else is skipped, because the bucket is
+ * public and an unrecognised type is not worth serving from our domain.
  * Returns the public URL, or null for a skipped type.
  */
 async function storeAttachment(
@@ -315,10 +325,11 @@ async function storeAttachment(
   emailId: string,
   meta: { id: string; content_type: string; size: number }
 ) {
-  const isImage = meta.content_type.startsWith("image/");
+  const imageExt = IMAGE_EXTENSIONS[meta.content_type];
   const videoExt = VIDEO_EXTENSIONS[meta.content_type];
-  if (!isImage && !videoExt) return null;
+  if (!imageExt && !videoExt) return null;
   if (videoExt && meta.size > MAX_VIDEO_BYTES) return null;
+  if (imageExt && meta.size > MAX_IMAGE_BYTES) return null;
 
   const { data: full, error } = await resend.emails.receiving.attachments.get({
     emailId,
@@ -328,47 +339,14 @@ async function storeAttachment(
 
   const download = await fetch(full.download_url);
   if (!download.ok) throw new Error(`Download failed (${download.status})`);
-  let buffer = Buffer.from(await download.arrayBuffer());
-
-  let extension = videoExt ?? IMAGE_EXTENSIONS[meta.content_type] ?? "jpg";
-  let contentType = meta.content_type;
-  if (isImage) {
-    try {
-      // Imported here rather than at the top of the file so a problem loading
-      // this native module can only cost an attachment, never the message it
-      // arrived with. Text replies are the overwhelming majority and must not
-      // depend on an image library being loadable.
-      const { default: sharp } = await import("sharp");
-      buffer = Buffer.from(
-        await sharp(buffer)
-          .rotate() // Bakes in EXIF orientation, which resizing would otherwise lose.
-          .resize(MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION, {
-            fit: "inside",
-            withoutEnlargement: true,
-          })
-          .jpeg({ quality: JPEG_QUALITY })
-          .toBuffer()
-      );
-      extension = "jpg";
-      contentType = "image/jpeg";
-    } catch (err) {
-      // Store it uncompressed rather than losing it. A large photo on the
-      // thread beats a missing one, and the alternative is the landlady
-      // being told about damage she cannot see. Costs storage, so it is
-      // logged loudly enough to notice if it becomes the normal path.
-      console.error(
-        `Attachment ${meta.id}: compression failed, storing original (${meta.content_type}, ${meta.size} bytes):`,
-        err
-      );
-    }
-  }
+  const buffer = Buffer.from(await download.arrayBuffer());
 
   // Random folder for unguessability, same as upload-url: the bucket is
   // public, so the URL is the only thing protecting the file.
-  const path = `${crypto.randomUUID()}/${Date.now()}.${extension}`;
+  const path = `${crypto.randomUUID()}/${Date.now()}.${videoExt ?? imageExt}`;
   const { error: uploadError } = await supabase.storage
     .from("ticket-media")
-    .upload(path, buffer, { contentType });
+    .upload(path, buffer, { contentType: meta.content_type });
   if (uploadError) throw new Error(uploadError.message);
 
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ticket-media/${path}`;
