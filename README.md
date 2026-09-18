@@ -958,9 +958,14 @@ Done: domain setup (sending, app URL, receiving MX all verified), and
    after Microsoft Safe Links rewrites it, which it does to every URL.
 6. **Phone testing, both sides.** The dashboard is mobile-first and it is the
    only way she will use it.
-7. **Rotate API keys.** Resend, Google Places, Supabase. All were exposed in a
-   dev session. For each: create new, update in Vercel, redeploy, verify, then
-   delete the old one.
+7. **Rotate API keys.** Resend and Google Places. The Supabase keys are
+   deliberately left alone: the only exposure was an assistant reading
+   `.env.local` in one session, so the values went into a conversation
+   transcript rather than anywhere public, and rotating them logs the landlady
+   out and briefly takes the database offline. Worth doing on a quiet
+   afternoon, not before launch. If they are ever exposed more widely, the
+   service role key is the one that matters, because it bypasses RLS
+   completely.
 8. **Clear the test data, last.** Rotating keys means testing afterwards, which
    creates fresh tickets, so this genuinely goes at the end. Delete from
    `ticket_messages`, `tickets` and `job_batches`, empty the `ticket-media`
