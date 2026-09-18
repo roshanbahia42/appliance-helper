@@ -316,6 +316,11 @@ ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sent_to_handyman_at timestamptz;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS admin_notes text;
 
+-- Null until the landlady opens the ticket. Without it a brand new report
+-- looked identical to one she had already dealt with, since the unread badge
+-- only ever counted student replies.
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS seen_at timestamptz;
+
 -- Conversation threads. One row per message, either direction.
 CREATE TABLE IF NOT EXISTS ticket_messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

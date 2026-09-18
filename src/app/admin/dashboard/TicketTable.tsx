@@ -61,11 +61,16 @@ export default function TicketTable({
   const inBin = filterStatus === "bin";
 
   const messagesFor = (t: Ticket) => messagesByTicket[t.id] ?? [];
-  // Badges use this so they clear on open. The Needs reply tab deliberately
-  // uses the raw server count instead: filtering on it too would make a ticket
-  // vanish from the list at the moment the landlady opens it.
+  // Badges use these so they clear on open. The Needs attention tab
+  // deliberately uses the raw server state instead: filtering on it too would
+  // make a ticket vanish from the list at the moment the landlady opens it.
   const unreadFor = (t: Ticket) =>
     locallyRead.has(t.id) ? 0 : unreadCount(messagesFor(t));
+  /** A report nobody has opened yet. Cleared the moment she does. */
+  const isUnseen = (t: Ticket) => !t.seen_at && !locallyRead.has(t.id);
+  /** One question, one answer: has this ticket got something waiting on her? */
+  const needsAttention = (t: Ticket) =>
+    !t.seen_at || unreadCount(messagesFor(t)) > 0;
 
   // Everything except status, so the tab counts can reflect the other filters.
   const matchesFilters = (t: Ticket) => {
@@ -117,7 +122,7 @@ export default function TicketTable({
     open: live.filter((t) => t.status === "open").length,
     escalated: live.filter((t) => t.status === "escalated").length,
     resolved: live.filter((t) => t.status === "resolved").length,
-    unread: live.filter((t) => unreadCount(messagesFor(t)) > 0).length,
+    unread: live.filter(needsAttention).length,
   };
 
   const [sortField, sortDirection] = sort.split("-");
@@ -134,7 +139,7 @@ export default function TicketTable({
       : filterStatus === "all"
         ? live
         : filterStatus === "unread"
-          ? live.filter((t) => unreadCount(messagesFor(t)) > 0)
+          ? live.filter(needsAttention)
           : live.filter((t) => t.status === filterStatus)
   )
     .slice()
@@ -336,8 +341,8 @@ export default function TicketTable({
   const selectTicket = (ticket: Ticket) => {
     const opening = selected?.id !== ticket.id;
     setSelected(opening ? ticket : null);
-    // Opening the ticket is the moment the unread badge has done its job.
-    if (opening && unreadFor(ticket) > 0) {
+    // Opening the ticket is the moment both badges have done their job.
+    if (opening && (unreadFor(ticket) > 0 || isUnseen(ticket))) {
       setLocallyRead((prev) => new Set(prev).add(ticket.id));
       postAction(`/api/tickets/${ticket.reference_number}/read`);
     }
@@ -561,7 +566,7 @@ export default function TicketTable({
                   <Trash2 className="w-4 h-4" aria-hidden="true" />
                 ) : (
                   <>
-                    {f === "all" ? "All" : f === "unread" ? "Needs reply" : STATUS_LABELS[f] ?? f}
+                    {f === "all" ? "All" : f === "unread" ? "Needs attention" : STATUS_LABELS[f] ?? f}
                     <span
                       className={`ml-1.5 text-xs ${filterStatus === f ? "text-white/70" : f === "unread" && statusCounts.unread > 0 ? "text-blue-500" : "text-gray-400"}`}
                     >
@@ -691,12 +696,18 @@ export default function TicketTable({
                           <FileText className="w-4 h-4" aria-label="Has notes" />
                         </span>
                       )}
-                      {/* With no digest email, this badge is the landlady's
-                          only signal a student replied. */}
-                      {unreadFor(ticket) > 0 && (
+                      {/* With no digest email, these badges are the landlady's
+                          only signal that something is waiting on her. */}
+                      {unreadFor(ticket) > 0 ? (
                         <span className="inline-flex align-middle ml-1.5 bg-blue-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
                           {unreadFor(ticket)} new
                         </span>
+                      ) : (
+                        isUnseen(ticket) && (
+                          <span className="inline-flex align-middle ml-1.5 bg-blue-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                            New
+                          </span>
+                        )
                       )}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${STATUS_COLORS[ticket.status] ?? "bg-gray-100 text-gray-600"}`}>
@@ -828,6 +839,10 @@ export default function TicketTable({
                       {unreadFor(ticket) > 0 ? (
                         <span className="bg-blue-600 text-white text-xs font-bold rounded-full px-2 py-0.5 whitespace-nowrap">
                           {unreadFor(ticket)} new
+                        </span>
+                      ) : isUnseen(ticket) ? (
+                        <span className="bg-blue-600 text-white text-xs font-bold rounded-full px-2 py-0.5 whitespace-nowrap">
+                          New
                         </span>
                       ) : messagesFor(ticket).length > 0 ? (
                         <span className="text-xs text-gray-400 whitespace-nowrap">

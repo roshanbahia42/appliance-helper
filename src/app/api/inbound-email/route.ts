@@ -34,6 +34,16 @@ const VIDEO_EXTENSIONS: Record<string, string> = {
   "video/webm": "webm",
 };
 
+/** Only used when compression fails and the original has to be stored as-is. */
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/heic": "heic",
+  "image/heif": "heif",
+};
+
 /**
  * Health check, so a failing webhook can be diagnosed without waiting for a
  * student to send something. A 200 proves the route's imports loaded; a crash
@@ -320,26 +330,37 @@ async function storeAttachment(
   if (!download.ok) throw new Error(`Download failed (${download.status})`);
   let buffer = Buffer.from(await download.arrayBuffer());
 
-  let extension = videoExt ?? "jpg";
+  let extension = videoExt ?? IMAGE_EXTENSIONS[meta.content_type] ?? "jpg";
   let contentType = meta.content_type;
   if (isImage) {
-    // Imported here rather than at the top of the file so a problem loading
-    // this native module can only cost an attachment, never the message it
-    // arrived with. Text replies are the overwhelming majority and must not
-    // depend on an image library being loadable.
-    const { default: sharp } = await import("sharp");
-    buffer = Buffer.from(
-      await sharp(buffer)
-        .rotate() // Bakes in EXIF orientation, which resizing would otherwise lose.
-        .resize(MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION, {
-          fit: "inside",
-          withoutEnlargement: true,
-        })
-        .jpeg({ quality: JPEG_QUALITY })
-        .toBuffer()
-    );
-    extension = "jpg";
-    contentType = "image/jpeg";
+    try {
+      // Imported here rather than at the top of the file so a problem loading
+      // this native module can only cost an attachment, never the message it
+      // arrived with. Text replies are the overwhelming majority and must not
+      // depend on an image library being loadable.
+      const { default: sharp } = await import("sharp");
+      buffer = Buffer.from(
+        await sharp(buffer)
+          .rotate() // Bakes in EXIF orientation, which resizing would otherwise lose.
+          .resize(MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION, {
+            fit: "inside",
+            withoutEnlargement: true,
+          })
+          .jpeg({ quality: JPEG_QUALITY })
+          .toBuffer()
+      );
+      extension = "jpg";
+      contentType = "image/jpeg";
+    } catch (err) {
+      // Store it uncompressed rather than losing it. A large photo on the
+      // thread beats a missing one, and the alternative is the landlady
+      // being told about damage she cannot see. Costs storage, so it is
+      // logged loudly enough to notice if it becomes the normal path.
+      console.error(
+        `Attachment ${meta.id}: compression failed, storing original (${meta.content_type}, ${meta.size} bytes):`,
+        err
+      );
+    }
   }
 
   // Random folder for unguessability, same as upload-url: the bucket is

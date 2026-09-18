@@ -3,8 +3,14 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { requireAdmin } from "@/utils/supabase/requireAdmin";
 
 /**
- * Marks a ticket's inbound messages as read. Called when the landlady opens
- * the ticket, which is the moment the unread badge has done its job.
+ * Marks a ticket as seen and its inbound messages as read. Called when the
+ * landlady opens the ticket, which is the moment both badges have done their
+ * job.
+ *
+ * A ticket is unseen until opened, which is what makes a brand new report
+ * visible. Before this, the only hint a ticket was new was the age column
+ * reading "Today", so one arriving between visits could sit unnoticed among
+ * the others.
  */
 export async function POST(
   _request: NextRequest,
@@ -16,10 +22,13 @@ export async function POST(
   const { reference } = await params;
   const supabase = createAdminClient();
 
+  const now = new Date().toISOString();
+
   const { data: ticket } = await supabase
     .from("tickets")
-    .select("id")
+    .update({ seen_at: now })
     .eq("reference_number", reference)
+    .select("id")
     .maybeSingle();
 
   if (!ticket) {
@@ -28,7 +37,7 @@ export async function POST(
 
   const { error } = await supabase
     .from("ticket_messages")
-    .update({ read_at: new Date().toISOString() })
+    .update({ read_at: now })
     .eq("ticket_id", ticket.id)
     .eq("direction", "inbound")
     .is("read_at", null);

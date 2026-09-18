@@ -20,6 +20,8 @@ export type Ticket = {
   deleted_at: string | null;
   admin_notes: string | null;
   confirmation_failed: boolean | null;
+  /** Null until the landlady opens it. Drives the New badge. */
+  seen_at: string | null;
 };
 
 export type BulkAction =
