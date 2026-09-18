@@ -65,6 +65,36 @@ and TXT records. Put both at the same subdomain and one will break.
 Sender then reads `maintenance@send.example.co.uk`. Slightly redundant, but only
 the domain registers with anyone reading it.
 
+### DNS snapshot, taken 2026-09-18
+
+Every record then published, so restoring after an accident does not mean
+hunting through three dashboards and retyping a 220 character key. All of it is
+public by design: DNS records are readable by anyone, and a DKIM public key is
+public by definition. The private key lives at Resend and is not here.
+
+Re-take it with `dig` against any public resolver if records change.
+
+```
+NAME                                       TYPE   VALUE
+eastwindspropertygroup.co.uk               A      149.255.56.43
+www.eastwindspropertygroup.co.uk           CNAME  eastwindspropertygroup.co.uk.
+eastwindspropertygroup.co.uk               MX     10 mail.eastwindspropertygroup.co.uk.
+mail.eastwindspropertygroup.co.uk          A      149.255.56.43
+eastwindspropertygroup.co.uk               TXT    v=spf1 +a +mx +a:dedi-133831.dedicloud.co.uk -all
+_dmarc.eastwindspropertygroup.co.uk        TXT    v=DMARC1; p=quarantine; adkim=s; aspf=s
+maintenance.eastwindspropertygroup.co.uk   CNAME  9d45b0012d4fbd77.vercel-dns-017.com.
+send.eastwindspropertygroup.co.uk          NS     ns1.send... / ns2.send...
+send.eastwindspropertygroup.co.uk          MX     10 inbound-smtp.eu-west-1.amazonaws.com.
+rsend.send.eastwindspropertygroup.co.uk    CNAME  rsend-euw1.forge.rmta.net.
+send.send.eastwindspropertygroup.co.uk     CNAME  send.forge.rmta.net.
+
+resend._domainkey.send.eastwindspropertygroup.co.uk  TXT
+p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDNGE2gHJKUOvTX+DveTQPcHuoZfll4oZz7La628iML7LomIYomD5OcSYp4ZWH/nOomhFM8foudnFTOrmc9xYZQWN7o5ZJuVHswdF+b3Jwf+7a8GooZPx5qSLWRDtKOjGvKDl07cubTL0fwD9YskCwL9ekTveTDIj6+8JT/9oRW6QIDAQAB
+```
+
+The first four rows and the SPF are the landlady's website and office email.
+They have nothing to do with this project and must not be touched.
+
 ### `send.` is its own DNS zone. Records go in it, not the main zone
 
 Read this before asking anyone to change DNS under `send.`, because getting it
