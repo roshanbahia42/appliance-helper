@@ -128,6 +128,7 @@ async function handleInbound(request: NextRequest, stage: { at: string }) {
       cc?: string[];
       subject: string;
       message_id: string;
+      attachments?: { id: string; content_type: string; size: number }[];
     };
   };
   let event: InboundEvent;
@@ -254,8 +255,36 @@ async function handleInbound(request: NextRequest, stage: { at: string }) {
   // One bad attachment shouldn't lose the message, so each is processed
   // independently and failures are logged rather than thrown.
   stage.at = "attachments";
+
+  // The fetched email is the documented source, but fall back to the webhook
+  // payload and then to the dedicated endpoint. Photos went missing with no
+  // error at all, which means something upstream reported none rather than
+  // failing, so it is worth asking more than once.
+  let attachments: { id: string; content_type: string; size: number }[] =
+    email.attachments ?? [];
+  if (attachments.length === 0 && (event.data.attachments?.length ?? 0) > 0) {
+    attachments = event.data.attachments!;
+    console.log(`Inbound ${message_id}: using attachments from webhook payload`);
+  }
+  if (attachments.length === 0) {
+    const { data: listed } = await resend.emails.receiving.attachments.list({
+      emailId: email_id,
+    });
+    if (listed?.data?.length) {
+      attachments = listed.data;
+      console.log(`Inbound ${message_id}: using attachments from list endpoint`);
+    }
+  }
+
+  console.log(
+    `Inbound ${message_id}: ${attachments.length} attachment(s)` +
+      (attachments.length
+        ? `: ${attachments.map((a) => `${a.content_type} ${a.size}b`).join(", ")}`
+        : "")
+  );
+
   const attachmentUrls: string[] = [];
-  for (const attachment of email.attachments ?? []) {
+  for (const attachment of attachments) {
     try {
       const url = await storeAttachment(supabase, email_id, attachment);
       if (url) attachmentUrls.push(url);
@@ -325,11 +354,24 @@ async function storeAttachment(
   emailId: string,
   meta: { id: string; content_type: string; size: number }
 ) {
-  const imageExt = IMAGE_EXTENSIONS[meta.content_type];
-  const videoExt = VIDEO_EXTENSIONS[meta.content_type];
-  if (!imageExt && !videoExt) return null;
-  if (videoExt && meta.size > MAX_VIDEO_BYTES) return null;
-  if (imageExt && meta.size > MAX_IMAGE_BYTES) return null;
+  // Normalised: some clients send "image/jpeg; name=photo.jpg".
+  const type = meta.content_type.split(";")[0].trim().toLowerCase();
+  const imageExt = IMAGE_EXTENSIONS[type];
+  const videoExt = VIDEO_EXTENSIONS[type];
+
+  // Skips were silent, which is what made a missing photo so hard to trace.
+  if (!imageExt && !videoExt) {
+    console.log(`Attachment ${meta.id}: skipped, unhandled type "${type}"`);
+    return null;
+  }
+  if (videoExt && meta.size > MAX_VIDEO_BYTES) {
+    console.log(`Attachment ${meta.id}: skipped, video over cap (${meta.size}b)`);
+    return null;
+  }
+  if (imageExt && meta.size > MAX_IMAGE_BYTES) {
+    console.log(`Attachment ${meta.id}: skipped, image over cap (${meta.size}b)`);
+    return null;
+  }
 
   const { data: full, error } = await resend.emails.receiving.attachments.get({
     emailId,
@@ -346,8 +388,9 @@ async function storeAttachment(
   const path = `${crypto.randomUUID()}/${Date.now()}.${videoExt ?? imageExt}`;
   const { error: uploadError } = await supabase.storage
     .from("ticket-media")
-    .upload(path, buffer, { contentType: meta.content_type });
+    .upload(path, buffer, { contentType: type });
   if (uploadError) throw new Error(uploadError.message);
 
+  console.log(`Attachment ${meta.id}: stored ${type} (${buffer.length}b)`);
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ticket-media/${path}`;
 }
