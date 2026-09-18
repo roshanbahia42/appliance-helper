@@ -905,43 +905,62 @@ only way to know whether work happened is to ask.
 
 ## Blocking go-live
 
-Domain setup is **done**: sending, the app URL and the receiving MX are all
-verified. What remains:
+Done: domain setup (sending, app URL, receiving MX all verified), and
+`LANDLORD_EMAIL` now points at the landlady's real address.
 
-1. **Conversations cutover.** Move `REPLY_DOMAIN` from the Resend test domain
+**Blocked on someone else**
+
+1. **Mail filtering at her end.** Her server treats mail from `send.<domain>`
+   as self-spoofing and drops it, so emergency alerts do not arrive. Not a DNS
+   problem: the mail passes SPF and DKIM, and Resend reports it delivered,
+   meaning her server accepted it and then binned it with a rule. Needs an
+   exception scoped to DKIM-authenticated mail from that subdomain, rather
+   than a From-address allowlist, which would reopen the hole the protection
+   exists to close. **Workaround if it stalls:** point `LANDLORD_EMAIL` at an
+   address off her domain, which sidesteps the heuristic entirely.
+2. **The landlady's admin account.** Confirm she has a Supabase Auth user and
+   knows the password, before she needs it at eleven at night.
+
+**Yours to do**
+
+3. **Conversations cutover.** Move `REPLY_DOMAIN` from the Resend test domain
    to `send.<domain>` and redeploy. Nothing else changes: every outbound email
    already builds its reply-to from that variable, and falls back to
    `RESEND_REPLY_TO` if it is unset. The test domain keeps receiving
    throughout, so replies to mail already sent are never stranded.
-2. **Rotate API keys.** All keys were exposed in a dev session and should be
-   rotated before real tenant data exists.
-3. **Replace `LANDLORD_EMAIL`** in Vercel with the landlady's real address.
-   Emergency alerts currently go to Roshan. Until this points at an address on
-   her own domain, the mail filtering below cannot be tested at all.
-4. **Clear the test data.** Delete from `ticket_messages`, `tickets` and
-   `job_batches`, empty the `ticket-media` storage bucket (deleting rows does
-   not remove uploaded files), and set the shorter token default:
+4. **Retest the student flow.** Submit, confirmation page, close ticket, reply.
+   The confirmation URL changed shape when it moved off the reference number,
+   and that is the path every student walks.
+5. **Test with a university address**, not just Gmail. Most students use one
+   and they filter hardest. Four things: the confirmation lands in the inbox
+   rather than spam, a reply from that address threads onto the ticket, the
+   reply is not swallowed by the auto-reply filter (university systems are the
+   likeliest to attach headers that trip it), and the thread link still works
+   after Microsoft Safe Links rewrites it, which it does to every URL.
+6. **Phone testing, both sides.** The dashboard is mobile-first and it is the
+   only way she will use it.
+7. **Rotate API keys.** Resend, Google Places, Supabase. All were exposed in a
+   dev session. For each: create new, update in Vercel, redeploy, verify, then
+   delete the old one.
+8. **Clear the test data, last.** Rotating keys means testing afterwards, which
+   creates fresh tickets, so this genuinely goes at the end. Delete from
+   `ticket_messages`, `tickets` and `job_batches`, empty the `ticket-media`
+   storage bucket (deleting rows does not remove uploaded files), and set the
+   shorter token default:
 
    ```sql
    ALTER TABLE tickets ALTER COLUMN public_token
      SET DEFAULT substr(replace(gen_random_uuid()::text, '-', ''), 1, 12);
    ```
 
-5. **Mail filtering at her end.** Her server treats mail from `send.<domain>`
-   as self-spoofing and drops it, so emergency alerts do not arrive. This is
-   not a DNS problem: the mail passes SPF and DKIM. It needs an exception on
-   her mail server, scoped to DKIM-authenticated mail from that subdomain
-   rather than a From-address allowlist, which would reopen the hole the
-   protection exists to close.
-6. **The landlady's admin account.** Confirm she has a Supabase Auth user and
-   can log in, before she needs to.
-7. **Test with a university address**, not just Gmail. Most students will use
-   one, and they filter hardest. Check four things: the confirmation lands in
-   the inbox rather than spam, a reply from that address threads onto the
-   ticket, the reply is not swallowed by the auto-reply filter (university
-   systems are the likeliest to attach headers that trip it), and the thread
-   link still works after Microsoft Safe Links rewrites it, which it does to
-   every URL in mail it handles.
+**Optional, not blocking**
+
+- Forward auto-replies to her inbox rather than discarding them, closing the
+  one path where a genuine reply can vanish silently.
+- Turn on Resend's blanket forwarding for the first few weeks as a safety net,
+  at the cost of a copy of every routine reply in her inbox.
+- Remove the stray `v=spf1 +a +mx +a:dedi-133831...` TXT on `send`, copied
+  down from the root during setup and wrong there.
 
 ## Waiting on the landlady
 
