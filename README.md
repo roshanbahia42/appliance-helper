@@ -986,6 +986,32 @@ Done: domain setup (sending, app URL, receiving MX all verified), and
 - Remove the stray `v=spf1 +a +mx +a:dedi-133831...` TXT on `send`, copied
   down from the root during setup and wrong there.
 
+## Temporary workarounds, switch back when the CNAME is restored
+
+`maintenance.<domain>` lost its CNAME during DNS work and has been
+unresolvable since. The app itself was never affected: it serves fine on the
+Vercel address. These point at that address instead and must be moved back,
+or they will quietly stay on a fallback URL that breaks if the project is ever
+renamed.
+
+| What | Temporarily | Back to |
+|---|---|---|
+| `APP_URL` in Vercel | `appliance-helper-self.vercel.app` | `https://maintenance.<domain>` |
+| Resend webhook URL | `…vercel.app/api/inbound-email` | `https://maintenance.<domain>/api/inbound-email` |
+
+`APP_URL` matters most: every link in every email is built from it, so while it
+points at a dead domain, confirmations, thread links and ticket-recovery emails
+all lead nowhere. The webhook matters second: Resend cannot deliver inbound
+replies to an address that does not resolve, so replies stop threading.
+
+Neither needs code changes. `APP_URL` needs a redeploy; the webhook URL does
+not, and its signing secret is unchanged.
+
+Check the webhook has not been auto-disabled after a week of failures. Resend
+switches endpoints off after repeated errors, and retains undelivered events,
+so expect a burst of queued replies once it can reach the app again. The
+dedupe on message ID makes that safe.
+
 ## Waiting on the landlady
 
 5. **Category streamlining** — which categories and subcategories are actually
