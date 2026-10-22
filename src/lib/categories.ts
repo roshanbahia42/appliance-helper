@@ -22,9 +22,19 @@ export type Category = {
   subcategories: Subcategory[];
 };
 
+/**
+ * Shown on every emergency screen, so a tenant can reach a person rather than
+ * waiting on a ticket.
+ *
+ * Placeholders from Ofcom's reserved drama range (07700 900000 to 900999),
+ * which is set aside precisely so fictional numbers cannot ring a real person.
+ * Replace with the real numbers before tenants use this. They were live here
+ * until the project started being shown to third parties, at which point
+ * displaying someone's personal mobile to strangers stopped being reasonable.
+ */
 export const CONTACTS = {
-  landlady: "07973 834611",
-  landlord2: "07790 498859",
+  landlady: "07700 900123",
+  landlord2: "07700 900456",
 };
 
 const contactLine = `${CONTACTS.landlady} or ${CONTACTS.landlord2}`;
