@@ -78,7 +78,21 @@ export async function GET() {
   // The prefix and length are enough to spot a truncated or whitespace
   // padded paste without ever printing the key.
   const key = process.env.RESEND_API_KEY ?? "";
-  const { error } = await resend.domains.list();
+  const { data, error } = await resend.domains.list();
+
+  // A send from an unverified domain is rejected before an email object
+  // exists, so it leaves no trace in the Resend dashboard at all. That looks
+  // identical to the app never having tried, which is why this reports the
+  // sending address alongside the status of every domain on the account.
+  const from = process.env.RESEND_FROM ?? "";
+  const fromDomain = from.includes("@")
+    ? from.split("@").pop()?.replace(/>.*$/, "").trim()
+    : null;
+
+  const domains = (data?.data ?? []).map((d) => ({
+    name: d.name,
+    status: d.status,
+  }));
 
   return NextResponse.json({
     ...config,
@@ -87,6 +101,11 @@ export async function GET() {
     resendKeyTrimmedLength: key.trim().length,
     resendKeyWorks: !error,
     resendError: error?.message ?? null,
+    sendingFrom: from,
+    sendingFromDomain: fromDomain,
+    domains,
+    fromDomainVerified:
+      domains.find((d) => d.name === fromDomain)?.status ?? "NOT ON THIS ACCOUNT",
   });
 }
 
